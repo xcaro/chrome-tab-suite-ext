@@ -10,7 +10,6 @@ import { StorageService } from '../services/storage.js';
 
 // ── Register features (order = load order only, not priority) ──
 import './features/dedup.js';
-import './features/fb-redirector.js';
 
 // ── Register core message handlers ──────────────────────────
 // Simple ack — dedup reads storage directly, no relay needed
@@ -26,7 +25,6 @@ Registry.startAll();
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason !== 'install') return;
   await StorageService.initDefaults({
-    fbAutoRedirect:  false,
     autoDetect:      false,
     actedCount:      0,
     enabledFeatures: {},

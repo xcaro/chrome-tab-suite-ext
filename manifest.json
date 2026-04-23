@@ -2,15 +2,12 @@
   "manifest_version": 3,
   "name": "Tab Suite",
   "version": "3.0.0",
-  "description": "Browser tab toolkit: Save bookmarks · Close duplicates · FB Auto-About",
+  "description": "Browser tab toolkit: Save bookmarks · Close duplicates",
   "permissions": [
     "tabs",
     "bookmarks",
     "scripting",
     "storage"
-  ],
-  "host_permissions": [
-    "*://*.facebook.com/*"
   ],
   "action": {
     "default_popup": "popup.html",

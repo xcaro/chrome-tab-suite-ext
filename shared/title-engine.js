@@ -21,40 +21,6 @@ async function fetchTitleFromTab(tabId) {
 const DOMAIN_RULES = [];
 
 DOMAIN_RULES.push({
-  match:         h => h === 'facebook.com' || h.endsWith('.facebook.com'),
-  genericTitles: ['facebook', 'log into facebook', 'facebook – log in or sign up'],
-  stripSuffix:   /\s*[|\-–—]\s*Facebook\s*$/i,
-  async resolveTitle(tab) {
-    const u    = new URL(tab.url);
-    const path = u.pathname.replace(/\/$/, '');
-    if (u.pathname === '/profile.php' && u.searchParams.get('id')) {
-      const id = u.searchParams.get('id');
-      const lt = await fetchTitleFromTab(tab.id);
-      if (lt) {
-        const c = lt.replace(/\s*[|\-–—]\s*Facebook.*$/i, '').trim();
-        if (c && !this.genericTitles.includes(c.toLowerCase())) return `${c} (Facebook)`;
-      }
-      return `ID:${id} (Facebook)`;
-    }
-    const NON  = new Set(['watch','marketplace','gaming','events','pages','stories',
-      'notifications','messages','groups','friends','reels','videos','photos',
-      'saved','bookmarks','live','fundraisers']);
-    const slug = path.match(/^\/([^/?#]+)/);
-    if (slug && !NON.has(slug[1])) {
-      const lt = await fetchTitleFromTab(tab.id);
-      if (lt) {
-        const c = lt.replace(/\s*[|\-–—]\s*Facebook.*$/i, '').trim();
-        if (c && !this.genericTitles.includes(c.toLowerCase())) return `${c} (Facebook)`;
-      }
-      return `${slug[1].replace(/\./g, ' ')} (Facebook)`;
-    }
-    const gm = path.match(/^\/groups\/([^/?#]+)/);
-    if (gm) return `${gm[1].replace(/[-_.]/g, ' ')} (Facebook Group)`;
-    return null;
-  },
-});
-
-DOMAIN_RULES.push({
   match:         h => h === 'instagram.com' || h.endsWith('.instagram.com'),
   genericTitles: ['instagram'],
   stripSuffix:   /\s*[|\-–—·•]\s*Instagram\s*$/i,
