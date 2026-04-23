@@ -1,0 +1,76 @@
+# =============================================================
+# Tab Suite — .gitignore
+# JetBrains IDEs (WebStorm / IntelliJ) + Chrome Extension
+# =============================================================
+
+# ── JetBrains IDE ────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# JetBrains shelf (local code reviews)
+.idea/shelf/
+
+# JetBrains workspace (machine-specific settings)
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/caches/
+
+# JetBrains code style (keep if team shares it, remove if not)
+# .idea/codeStyles/
+
+# ── OS ───────────────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ── Chrome Extension ─────────────────────────────────────────
+# Packed extension files — build artifacts, not source
+*.crx
+*.pem
+*.zip
+
+# Chrome profile test data
+chrome-profile/
+test-profile/
+
+# ── Node.js (if adding a build step later) ───────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
+
+# ── Environment & secrets ────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
