@@ -52,7 +52,9 @@ export const GlobalStats = {
     document.getElementById('gActedCount').textContent = actedCount || '—';
   },
 
-  init()    { return this._update(() => StorageService.resetActedCount()); },
+  // Fix: init() no longer resets actedCount — use getActedCount() same as refresh()
+  // so previously recorded actions survive popup close/reopen within the same session.
+  init()    { return this._update(() => StorageService.getActedCount()); },
   refresh() { return this._update(() => StorageService.getActedCount()); },
 };
 

@@ -101,10 +101,17 @@ async function closeAll() {
 }
 
 // ── Keep mode toggle ──────────────────────────────────────────
-function setKeepUI(newest) {
+// Shows "Newest" (accent) or "Oldest" (warn) — never "on"/"off"
+// so users always know which tab survives dedup.
+async function setKeepUI(newest) {
   _keepNewest = newest;
   const label = document.getElementById('keepModeLabel');
-  if (label) setToggleLabel(label, newest);
+  if (label) {
+    label.textContent  = newest ? 'Newest' : 'Oldest';
+    label.style.color  = newest ? 'var(--accent)' : 'var(--warn)';
+  }
+  // Persist so background auto-detect uses the same strategy
+  await StorageService.setEnabled('keepNewest', newest);
 }
 
 // ── Auto-detect toggle ────────────────────────────────────────
@@ -116,6 +123,18 @@ async function loadAutoDetect() {
   const on = await StorageService.isEnabled('autoDetect', false);
   document.getElementById('autoToggle').checked = on;
   setAutoUI(on);
+}
+
+async function loadKeepMode() {
+  const newest = await StorageService.isEnabled('keepNewest', true);
+  const keepToggle = document.getElementById('keepModeToggle');
+  if (keepToggle) keepToggle.checked = newest;
+  _keepNewest = newest;
+  const label = document.getElementById('keepModeLabel');
+  if (label) {
+    label.textContent = newest ? 'Newest' : 'Oldest';
+    label.style.color = newest ? 'var(--accent)' : 'var(--warn)';
+  }
 }
 
 // ── Init ─────────────────────────────────────────────────────
@@ -142,8 +161,6 @@ export function init() {
 
   const keepToggle = document.getElementById('keepModeToggle');
   if (keepToggle) {
-    keepToggle.checked = true;
-    setKeepUI(true);
     keepToggle.addEventListener('change', () => setKeepUI(keepToggle.checked));
   }
 
@@ -156,5 +173,6 @@ export function init() {
   });
 
   loadAutoDetect();
+  loadKeepMode();
   PanelHooks['dedup'] = render;
 }

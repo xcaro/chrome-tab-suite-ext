@@ -7,7 +7,8 @@ import { Registry }        from '../registry.js';
 import { StorageService }  from '../../services/storage.js';
 import { normalizeUrl }    from '../../shared/url-utils.js';
 
-const STORAGE_KEY = 'autoDetect';
+const STORAGE_KEY      = 'autoDetect';
+const KEEP_NEWEST_KEY  = 'keepNewest';
 
 // Only process http/https/ftp — never touch chrome://, about:, etc.
 function _isProcessable(url) {
@@ -30,15 +31,32 @@ async function checkAndCloseDuplicate(newTabId, newTabUrl) {
     );
     if (!duplicates.length) return;
 
-    for (const dup of duplicates) {
-      try { await chrome.tabs.remove(dup.id); } catch { /* already closed */ }
-    }
+    // Read keep-mode from storage to stay consistent with popup Dedup toggle.
+    // keepNewest=true (default) → keep the newly opened tab, close existing ones.
+    // keepNewest=false          → keep the oldest tab, close the new one.
+    const keepNewest = await StorageService.isEnabled(KEEP_NEWEST_KEY, true);
 
-    try {
-      await chrome.tabs.update(newTabId, { active: true });
-      const tab = await chrome.tabs.get(newTabId);
-      if (tab) await chrome.windows.update(tab.windowId, { focused: true });
-    } catch { /* tab may have been closed */ }
+    if (keepNewest) {
+      // Close existing duplicates, keep the new tab
+      for (const dup of duplicates) {
+        try { await chrome.tabs.remove(dup.id); } catch { /* already closed */ }
+      }
+      try {
+        await chrome.tabs.update(newTabId, { active: true });
+        const tab = await chrome.tabs.get(newTabId);
+        if (tab) await chrome.windows.update(tab.windowId, { focused: true });
+      } catch { /* tab may have been closed */ }
+    } else {
+      // Close the new tab, focus the oldest existing duplicate
+      try { await chrome.tabs.remove(newTabId); } catch { /* already closed */ }
+      const oldest = duplicates.reduce((a, b) =>
+        (a.lastAccessed || 0) <= (b.lastAccessed || 0) ? a : b
+      );
+      try {
+        await chrome.tabs.update(oldest.id, { active: true });
+        await chrome.windows.update(oldest.windowId, { focused: true });
+      } catch { /* tab may have been closed */ }
+    }
 
   } catch { /* silently handle */ }
 }

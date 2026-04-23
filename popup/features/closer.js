@@ -220,13 +220,16 @@ async function render() {
   else                                      await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
 }
 
+// ── Get target tabs ───────────────────────────────────────────
+// Returns [others, active] or null if no targets found.
+// Callers must check for null before destructuring.
 async function getTargetTabs() {
   const allTabs = await chrome.tabs.query({});
   const targets = FilterService.hasFilters('closer')
     ? FilterService.filterTabs('closer', allTabs)
     : allTabs.filter(isHttpTab);
 
-  if (!targets.length) { btn.disabled = false; return; }
+  if (!targets.length) return null;
 
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const others      = targets.filter(t => t.id !== activeTab?.id);
@@ -237,11 +240,13 @@ async function getTargetTabs() {
 
 // ── Close all ────────────────────────────────────────────────
 async function closeAll() {
-  const btn     = document.getElementById('btnCloserCloseAll');
-  btn.disabled  = true;
+  const btn    = document.getElementById('btnCloserCloseAll');
+  btn.disabled = true;
 
-  const [others, active] = await getTargetTabs();
+  const result = await getTargetTabs();
+  if (!result) { btn.disabled = false; return; }
 
+  const [others, active] = result;
   let closed = 0;
   for (const tab of others) { try { await chrome.tabs.remove(tab.id); closed++; } catch {} }
   if (active) { try { await chrome.tabs.remove(active.id); closed++; } catch {} }
@@ -254,12 +259,14 @@ async function closeAll() {
 }
 
 async function newWindow() {
-  const btn     = document.getElementById('btnNewWindow');
-  btn.disabled  = true;
+  const btn    = document.getElementById('btnNewWindow');
+  btn.disabled = true;
 
-  const [others, active] = await getTargetTabs();
+  const result = await getTargetTabs();
+  if (!result) { btn.disabled = false; return; }
 
-  const tabs = [...others, active];
+  const [others, active] = result;
+  const tabs = [...others, ...(active ? [active] : [])];
   await moveToNewWindow(tabs);
 
   await setActed(tabs.length);
