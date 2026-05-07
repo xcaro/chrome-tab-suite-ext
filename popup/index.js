@@ -8,7 +8,10 @@ import { GlobalStats, PanelHooks, initPanelNav } from './services/ui.js';
 import { init as initCloser   } from './features/closer.js';
 import { init as initVault    } from './features/vault.js';
 import { init as initDedup    } from './features/dedup.js';
-import { init as initSettings } from './features/settings.js';
+import { init as initSettings, applyTheme } from './features/settings.js';
+
+// Apply theme immediately to avoid flash of wrong theme
+chrome.storage.sync.get({ theme: 'system' }).then(({ theme }) => applyTheme(theme));
 
 async function boot() {
   initPanelNav();

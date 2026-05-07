@@ -19,6 +19,20 @@ async function applyUiMode(mode) {
   // background.js listens to storage.onChanged and calls applyUiMode() there
 }
 
+// ── Theme ─────────────────────────────────────────────────────
+export function applyTheme(theme) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const useDark = theme === 'dark' || (theme === 'system' && prefersDark);
+  document.body.classList.toggle('light-mode', !useDark);
+}
+
+async function loadTheme() {
+  const { theme = 'system' } = await chrome.storage.sync.get('theme');
+  const select = document.getElementById('settingsTheme');
+  if (select) select.value = theme;
+  applyTheme(theme);
+}
+
 // ── Auto-detect ───────────────────────────────────────────────
 async function loadAutoDetect() {
   const on = await StorageService.isEnabled('autoDetect', false);
@@ -39,6 +53,16 @@ export function init() {
     });
   }
 
+  // Theme select
+  const themeSelect = document.getElementById('settingsTheme');
+  if (themeSelect) {
+    themeSelect.addEventListener('change', async () => {
+      const theme = themeSelect.value;
+      await chrome.storage.sync.set({ theme });
+      applyTheme(theme);
+    });
+  }
+
   // Auto-detect toggle
   const autoToggle = document.getElementById('settingsAutoDetect');
   const autoStatus = document.getElementById('settingsAutoStatus');
@@ -52,5 +76,6 @@ export function init() {
   }
 
   loadUiMode();
+  loadTheme();
   loadAutoDetect();
 }
