@@ -21,6 +21,12 @@ MessageBus.register('GET_FEATURES',    async () => ({ features: Registry.getAll(
 MessageBus.listen();
 Registry.startAll();
 
+// ── Open side panel on action click ─────────────────────────
+// (no default_popup in manifest, so this event fires on icon click)
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
 // ── Onboarding ───────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason !== 'install') return;

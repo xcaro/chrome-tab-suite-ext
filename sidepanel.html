@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tab Suite</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <div class="logo-icon" id="logoIcon" title="">🛠️</div>
+    <div class="header-text">
+      <h1>Tab<span>Suite</span></h1>
+      <p>Manage Tabs in Browser</p>
+    </div>
+  </div>
+
+  <!-- ── TAB NAV ── -->
+  <div class="tab-nav">
+    <button class="tab-nav-btn active" data-panel="closer">
+      <span class="nav-icon">🗂</span>Manager
+    </button>
+    <button class="tab-nav-btn" data-panel="vault">
+      <span class="nav-icon">💾</span>Vault
+    </button>
+    <button class="tab-nav-btn" data-panel="dedup">
+      <span class="nav-icon">⊗</span>Dedup
+    </button>
+  </div>
+
+  <!-- ── GLOBAL STATS ── -->
+  <div class="global-stats">
+    <div class="g-stat">
+      <div class="g-stat-num" id="gTabsOpen">—</div>
+      <div class="g-stat-label">Open tabs</div>
+    </div>
+    <div class="g-stat">
+      <div class="g-stat-num" id="gDupCount">—</div>
+      <div class="g-stat-label">Duplicates</div>
+    </div>
+    <div class="g-stat">
+      <div class="g-stat-num" id="gActedCount">0</div>
+      <div class="g-stat-label">Processed</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 1 — CLOSER (mass close by domain)
+  ══════════════════════════════════════════ -->
+  <div class="panel active" id="panel-closer">
+    <div class="panel-scroll">
+
+      <div class="section">
+        <div class="section-label">Filter by domain <span class="badge badge-green filter-on-badge" id="closerFilterBadge" style="display:none">ON</span></div>
+        <div class="input-row">
+          <div class="input-wrap">
+            <span class="input-icon">🌐</span>
+            <input type="text" id="closerDomainInput" placeholder="domain or search text..." />
+          </div>
+          <button class="icon-btn" id="closerAddDomainBtn">+</button>
+        </div>
+        <div class="tag-list" id="closerDomainTags"></div>
+        <div id="closerFilterHint" style="display:none; font-size:10px; color:var(--muted); margin-top:6px;">
+          Showing only tabs matching domain filter
+        </div>
+        <label class="check-row" style="margin-top:8px;">
+          <input type="checkbox" id="closerHostOnlyToggle" />
+          <span class="check-label">Host-only tabs</span>
+        </label>
+      </div>
+
+      <div class="section" style="border-bottom:none">
+        <div class="section-label">
+          <span id="closerListLabel">All tabs</span>
+          <span class="badge badge-red" id="closerBadge" style="display:none">0</span>
+        </div>
+        <div class="dup-list" id="closerList">
+          <div class="empty-state">
+            <div class="e-icon">✓</div>
+            <div class="e-title">No open tabs</div>
+            <div>No tabs are currently open</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-scroll -->
+
+    <div class="panel-footer">
+      <div class="action-pad">
+        <button class="btn btn-ghost" id="btnNewWindow" disabled>
+          <span>⧉</span> New tab
+        </button>
+        <button class="btn btn-accent" id="btnCloserCloseAll" disabled>
+          <span>✕</span> Close all
+        </button>
+      </div>
+    </div>
+  </div><!-- /panel-closer -->
+
+  <!-- ══════════════════════════════════════════
+       PANEL 2 — VAULT
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-vault">
+    <div class="panel-scroll">
+
+      <div class="section">
+        <div class="section-label">Folder name</div>
+        <div class="input-wrap">
+          <span class="input-icon">📁</span>
+          <input type="text" id="folderName" placeholder="e.g. Work – 03/16/2026" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Filter by domain <span class="badge badge-green filter-on-badge" id="vaultFilterBadge" style="display:none">ON</span></div>
+        <div class="input-row">
+          <div class="input-wrap">
+            <span class="input-icon">🌐</span>
+            <input type="text" id="vaultDomainInput" placeholder="domain or search text..." />
+          </div>
+          <button class="icon-btn" id="vaultAddDomainBtn">+</button>
+        </div>
+        <div class="tag-list" id="vaultDomainTags"></div>
+      </div>
+
+      <div class="section" id="vaultMatchSection" style="display:none; border-bottom:none">
+        <div class="section-label">
+          All tabs
+          <span class="badge badge-red" id="vaultMatchBadge">0</span>
+        </div>
+        <div class="dup-list" id="vaultMatchList"></div>
+      </div>
+
+    </div><!-- /panel-scroll -->
+
+    <div class="panel-footer">
+      <div class="section" style="border-bottom:1px solid var(--border); padding:10px 16px;">
+        <div class="section-label">Options</div>
+        <div class="check-list">
+          <label class="check-row">
+            <input type="checkbox" id="skipDupes" checked />
+            <span class="check-label">Skip duplicate URLs</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" id="closeTabs" />
+            <span class="check-label">Close tabs after saving</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" id="skipPinned" />
+            <span class="check-label">Skip pinned tabs</span>
+          </label>
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="action-pad">
+        <button class="btn btn-accent" id="saveBtn">
+          <span>💾</span> Save all tabs
+        </button>
+      </div>
+    </div>
+  </div><!-- /panel-vault -->
+
+  <!-- ══════════════════════════════════════════
+       PANEL 3 — DEDUP
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-dedup">
+    <div class="panel-scroll">
+
+      <div class="section">
+        <div class="section-label">Filter by domain <span class="badge badge-green filter-on-badge" id="dedupFilterBadge" style="display:none">ON</span></div>
+        <div class="input-row">
+          <div class="input-wrap">
+            <span class="input-icon">🌐</span>
+            <input type="text" id="dedupDomainInput" placeholder="domain or search text..." />
+          </div>
+          <button class="icon-btn" id="dedupAddDomainBtn">+</button>
+        </div>
+        <div class="tag-list" id="dedupDomainTags"></div>
+        <div id="dedupFilterHint" style="display:none; font-size:10px; color:var(--muted); margin-top:6px;">
+          Only show duplicates in filtered domains
+        </div>
+      </div>
+
+      <div class="section" style="border-bottom:none">
+        <div class="section-label">
+          Duplicate tabs
+          <span class="badge badge-red" id="dupBadge" style="display:none">0</span>
+        </div>
+        <div class="dup-list" id="dupList">
+          <div class="empty-state">
+            <div class="e-icon">✓</div>
+            <div class="e-title">No duplicate tabs!</div>
+            <div>All tabs are unique</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-scroll -->
+
+    <div class="panel-footer">
+      <div class="action-pad">
+        <div class="footer-row" style="padding:0 0 10px 0; border-top:none;">
+          <div>
+            <div class="footer-title">Keep tab</div>
+            <div class="footer-sub on" id="keepModeLabel">Newest</div>
+          </div>
+          <label class="toggle accent" title="Toggle keep newest / oldest">
+            <input type="checkbox" id="keepModeToggle" checked />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <button class="btn btn-accent" id="btnDedupeClose" disabled>
+          <span>⊗</span> Close all duplicates
+        </button>
+        <button class="btn btn-ghost" id="btnDedupeScan">
+          <span>↻</span> Rescan
+        </button>
+      </div>
+      <div class="footer-row">
+        <div>
+          <div class="footer-title">Auto-detect</div>
+          <div class="footer-sub off" id="autoStatus">off</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="autoToggle" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+  </div><!-- /panel-dedup -->
+
+  <div class="toast" id="toast"></div>
+
+  <script src="popup/index.js" type="module"></script>
+</body>
+</html>
