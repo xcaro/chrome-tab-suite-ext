@@ -14,11 +14,6 @@ async function loadUiMode() {
   if (select) select.value = uiMode;
 }
 
-async function applyUiMode(mode) {
-  await chrome.storage.sync.set({ uiMode: mode });
-  // background.js listens to storage.onChanged and calls applyUiMode() there
-}
-
 // ── Theme ─────────────────────────────────────────────────────
 export function applyTheme(theme) {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -48,7 +43,7 @@ export function init() {
   const uiModeSelect = document.getElementById('settingsUiMode');
   if (uiModeSelect) {
     uiModeSelect.addEventListener('change', async () => {
-      await applyUiMode(uiModeSelect.value);
+      await chrome.storage.sync.set({ uiMode: uiModeSelect.value });
       showToast('Display mode updated — takes effect on next open', 'info');
     });
   }

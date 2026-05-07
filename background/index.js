@@ -25,25 +25,22 @@ Registry.startAll();
 // browser revokes the user-gesture token the moment the call stack yields.
 let _uiMode = 'sidepanel';
 
+const UI_MODE_HANDLERS = {
+  popup:     () => chrome.action.setPopup({ popup: 'popup.html' }),
+  sidepanel: () => chrome.action.setPopup({ popup: '' }),
+};
+
 async function applyUiMode() {
   const { uiMode = 'sidepanel' } = await chrome.storage.sync.get('uiMode');
   _uiMode = uiMode;
-
-  if (uiMode === 'popup') {
-    await chrome.action.setPopup({ popup: 'popup.html' });
-  } else {
-    // Clear popup so action.onClicked fires → we open the side panel there
-    await chrome.action.setPopup({ popup: '' });
-  }
+  await UI_MODE_HANDLERS[uiMode]?.();
 }
 
 // Sync cache on every service worker startup (MV3 workers are not persistent)
 chrome.runtime.onStartup.addListener(applyUiMode);
 
 // Re-sync immediately when user changes the setting
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.uiMode) applyUiMode();
-});
+chrome.storage.onChanged.addListener(({ uiMode }) => uiMode && applyUiMode());
 
 // Handle icon click — only fires when popup is cleared (sidepanel mode).
 // IMPORTANT: sidePanel.open() must be the first call — no await before it.
