@@ -306,9 +306,9 @@ body.light-mode .toggle.accent input:checked ~ .toggle-thumb { box-shadow: none;
   border-bottom: none;
   overflow: hidden;
 }
-.dup-group:last-child { border-bottom: none; }
+.dup-group:last-child { border-bottom: 1px solid var(--border); }
 .dup-header {
-  border-bottom: 1px solid var(--border);
+  /*border-bottom: 1px solid var(--border);*/
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; background: var(--surface);
   cursor: pointer; user-select: none; transition: background 0.12s;
@@ -328,15 +328,23 @@ body.light-mode .toggle.accent input:checked ~ .toggle-thumb { box-shadow: none;
 .dup-tab-list.open { display: block; }
 
 .dup-tab-row {
-  display: flex; align-items: center; gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 7px 10px;
-  border: 1px solid rgba(42,42,50,0.5);
-  border-bottom: none;
+  border: none;
+  border-bottom: 1px solid rgba(42,42,50,0.5);
   cursor: pointer; transition: background 0.1s;
 }
-.dup-tab-row:last-child { border-bottom: 1px solid rgba(42,42,50,0.5); }
+.dup-tab-row:last-child { border-bottom: none; }
 .dup-tab-row:hover { background: var(--surface2); }
 .dup-tab-row:hover .focus-btn { opacity: 1; }
+
+.light-mode .dup-tab-row {
+    border: none;
+    border-bottom: 1px solid white;;
+}
+.light-mode .dup-tab-row:last-child { border-bottom: none; }
 
 .tab-idx { font-family: Arial, monospace; font-size: 10px; color: var(--muted); min-width: 14px; text-align: center; flex-shrink: 0; }
 .tab-meta { flex: 1; min-width: 0; }
