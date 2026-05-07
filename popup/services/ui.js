@@ -34,8 +34,11 @@ export async function setActed(n) {
 
 // ── Global stats ─────────────────────────────────────────────
 export const GlobalStats = {
-  async _update(getActedCount) {
-    const allTabs  = await chrome.tabs.query({});
+  async _update(tabsPromise) {
+    const [allTabs, actedCount] = await Promise.all([
+      tabsPromise,
+      StorageService.getActedCount(),
+    ]);
     const httpTabs = allTabs.filter(isHttpTab);
     document.getElementById('gTabsOpen').textContent = httpTabs.length;
 
@@ -48,14 +51,13 @@ export const GlobalStats = {
     document.getElementById('gDupCount').textContent =
       [...urlMap.values()].filter(c => c > 1).length;
 
-    const actedCount = await getActedCount();
     document.getElementById('gActedCount').textContent = actedCount || '—';
   },
 
-  // Fix: init() no longer resets actedCount — use getActedCount() same as refresh()
-  // so previously recorded actions survive popup close/reopen within the same session.
-  init()    { return this._update(() => StorageService.getActedCount()); },
-  refresh() { return this._update(() => StorageService.getActedCount()); },
+  // initWithTabs: accepts shared tabsPromise from boot() — avoids a redundant query.
+  initWithTabs(tabsPromise) { return this._update(tabsPromise); },
+  // refresh() issues its own query — called after user actions when tabs have changed.
+  refresh()                 { return this._update(chrome.tabs.query({})); },
 };
 
 // ── Toggle label ─────────────────────────────────────────────

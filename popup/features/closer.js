@@ -210,12 +210,15 @@ async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
 }
 
 // ── Main render ──────────────────────────────────────────────
-async function render() {
-  const list   = document.getElementById('closerList');
-  const badge  = document.getElementById('closerBadge');
-  const btnAll = document.getElementById('btnCloserCloseAll');
+// tabsPromise: optional — passed from boot() to reuse the initial query.
+// Internal re-renders (after close/move) call render() without argument,
+// which fires a fresh query to get the updated tab list.
+async function render(tabsPromise) {
+  const list         = document.getElementById('closerList');
+  const badge        = document.getElementById('closerBadge');
+  const btnAll       = document.getElementById('btnCloserCloseAll');
   const btnNewWindow = document.getElementById('btnNewWindow');
-  const allTabs = await chrome.tabs.query({});
+  const allTabs      = await (tabsPromise ?? chrome.tabs.query({}));
   if (FilterService.hasFilters('closer')) await renderFiltered(allTabs, list, badge, btnAll, btnNewWindow);
   else                                      await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
 }

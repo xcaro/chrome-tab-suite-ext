@@ -16,10 +16,13 @@ async function boot() {
   initVault();
   initDedup();
 
-  await GlobalStats.init();
-
-  // Defer Manager render — popup appears immediately, content loads after
-  requestAnimationFrame(() => PanelHooks['closer']?.());
+  // Single tabs.query shared by both stats and first render — no redundant call.
+  // Both run concurrently: popup content appears immediately without waiting for stats.
+  const tabsPromise = chrome.tabs.query({});
+  await Promise.all([
+    GlobalStats.initWithTabs(tabsPromise),
+    PanelHooks['closer']?.(tabsPromise),
+  ]);
 }
 
 boot();
