@@ -1,6 +1,7 @@
 // =============================================================
 // popup/features/dedup.js — Dedup Panel
 // Depends on: shared/url-utils.js, popup/services/ui.js
+// Note: auto-detect setting is owned by settings.js
 // =============================================================
 
 import { normalizeUrl } from '../../shared/url-utils.js';
@@ -101,8 +102,6 @@ async function closeAll() {
 }
 
 // ── Keep mode toggle ──────────────────────────────────────────
-// Shows "Newest" (accent) or "Oldest" (warn) — never "on"/"off"
-// so users always know which tab survives dedup.
 async function setKeepUI(newest) {
   _keepNewest = newest;
   const label = document.getElementById('keepModeLabel');
@@ -110,19 +109,7 @@ async function setKeepUI(newest) {
     label.textContent  = newest ? 'Newest' : 'Oldest';
     label.style.color  = newest ? 'var(--accent)' : 'var(--warn)';
   }
-  // Persist so background auto-detect uses the same strategy
   await StorageService.setEnabled('keepNewest', newest);
-}
-
-// ── Auto-detect toggle ────────────────────────────────────────
-function setAutoUI(on) {
-  setToggleLabel(document.getElementById('autoStatus'), on);
-}
-
-async function loadAutoDetect() {
-  const on = await StorageService.isEnabled('autoDetect', false);
-  document.getElementById('autoToggle').checked = on;
-  setAutoUI(on);
 }
 
 async function loadKeepMode() {
@@ -164,15 +151,6 @@ export function init() {
     keepToggle.addEventListener('change', () => setKeepUI(keepToggle.checked));
   }
 
-  const autoToggle = document.getElementById('autoToggle');
-  autoToggle.addEventListener('change', async () => {
-    const on = autoToggle.checked;
-    await StorageService.setEnabled('autoDetect', on);
-    chrome.runtime.sendMessage({ type: 'SET_AUTO_DETECT', enabled: on }).catch(() => {});
-    setAutoUI(on);
-  });
-
-  loadAutoDetect();
   loadKeepMode();
   PanelHooks['dedup'] = render;
 }

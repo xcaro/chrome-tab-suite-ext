@@ -4,27 +4,56 @@
 // To add a new background feature: just import it here.
 // =============================================================
 
-import { Registry }    from './registry.js';
-import { MessageBus }  from './message-bus.js';
+import { Registry }       from './registry.js';
+import { MessageBus }     from './message-bus.js';
 import { StorageService } from '../services/storage.js';
 
-// ── Register features (order = load order only, not priority) ──
+// ── Register features ────────────────────────────────────────
 import './features/dedup.js';
 
 // ── Register core message handlers ──────────────────────────
-// Simple ack — dedup reads storage directly, no relay needed
 MessageBus.register('SET_AUTO_DETECT', async () => ({ ok: true }));
 MessageBus.register('GET_FEATURES',    async () => ({ features: Registry.getAll() }));
 
 // ── Boot ─────────────────────────────────────────────────────
-// MessageBus.listen() MUST be called after all handlers are registered
 MessageBus.listen();
 Registry.startAll();
 
-// ── Open side panel on action click ─────────────────────────
-// (no default_popup in manifest, so this event fires on icon click)
+// ── UI Mode ──────────────────────────────────────────────────
+// Cache uiMode in memory so action.onClicked can read it synchronously.
+// sidePanel.open() must be called without any await before it — the
+// browser revokes the user-gesture token the moment the call stack yields.
+let _uiMode = 'sidepanel';
+
+async function applyUiMode() {
+  const { uiMode = 'sidepanel' } = await chrome.storage.sync.get('uiMode');
+  _uiMode = uiMode;
+
+  if (uiMode === 'popup') {
+    await chrome.action.setPopup({ popup: 'popup.html' });
+  } else {
+    // Clear popup so action.onClicked fires → we open the side panel there
+    await chrome.action.setPopup({ popup: '' });
+  }
+}
+
+// Sync cache on every service worker startup (MV3 workers are not persistent)
+chrome.runtime.onStartup.addListener(applyUiMode);
+
+// Re-sync immediately when user changes the setting
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.uiMode) applyUiMode();
+});
+
+// Handle icon click — only fires when popup is cleared (sidepanel mode).
+// IMPORTANT: sidePanel.open() must be the first call — no await before it.
 chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ windowId: tab.windowId });
+  if (_uiMode === 'sidepanel') {
+    // Call open() synchronously within the gesture handler, then do the rest
+    chrome.sidePanel.open({ windowId: tab.windowId });
+    chrome.sidePanel.setOptions({ tabId: tab.id, enabled: true });
+  }
+  // popup mode: this listener never fires because action has a popup set
 });
 
 // ── Onboarding ───────────────────────────────────────────────
@@ -35,4 +64,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     actedCount:      0,
     enabledFeatures: {},
   });
+  // Default uiMode to sidepanel on fresh install
+  await chrome.storage.sync.set({ uiMode: 'sidepanel' });
+  await applyUiMode();
 });

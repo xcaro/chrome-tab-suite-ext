@@ -399,3 +399,66 @@ input[type="text"]::placeholder { color: var(--muted); }
 .toast.success { background: var(--success); color: #000; }
 .toast.error   { background: var(--danger);  color: #fff; }
 .toast.info    { background: var(--surface2); color: var(--text); border-top: 1px solid var(--border); }
+
+
+/* ─── SETTINGS PANEL ─────────────────────── */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.setting-desc {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Select dropdown */
+.setting-select {
+  flex-shrink: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+  /* simple caret */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a5a72'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+.setting-select:focus { border-color: var(--accent); }
+.setting-select option { background: var(--surface2); }
+
+/* Toggle + status label side by side */
+.setting-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.setting-toggle-wrap .footer-sub {
+  margin-top: 0;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}

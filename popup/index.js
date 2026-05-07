@@ -5,9 +5,10 @@
 // =============================================================
 
 import { GlobalStats, PanelHooks, initPanelNav } from './services/ui.js';
-import { init as initCloser } from './features/closer.js';
-import { init as initVault  } from './features/vault.js';
-import { init as initDedup  } from './features/dedup.js';
+import { init as initCloser   } from './features/closer.js';
+import { init as initVault    } from './features/vault.js';
+import { init as initDedup    } from './features/dedup.js';
+import { init as initSettings } from './features/settings.js';
 
 async function boot() {
   initPanelNav();
@@ -15,6 +16,7 @@ async function boot() {
   initCloser();
   initVault();
   initDedup();
+  initSettings();
 
   // Single tabs.query shared by both stats and first render — no redundant call.
   // Both run concurrently: popup content appears immediately without waiting for stats.

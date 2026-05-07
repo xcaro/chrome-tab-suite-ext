@@ -29,7 +29,6 @@ body {
   font-size: 13px;
   display: flex;
   flex-direction: column;
-  /* Side panel width is controlled by Chrome (user-resizable, min ~200px) */
 }
 
 /* ─── HEADER ─────────────────────────────── */
@@ -145,17 +144,15 @@ body {
 }
 
 /* ─── PANELS ─────────────────────────────── */
-/* KEY CHANGE: panels fill all remaining vertical space */
 .panel {
   display: none;
-  flex: 1;                  /* grow to fill remaining height */
+  flex: 1;
   flex-direction: column;
-  min-height: 0;            /* allow shrinking below content height */
+  min-height: 0;
   overflow: hidden;
 }
 .panel.active { display: flex; }
 
-/* Scrollable content area inside panel */
 .panel-scroll {
   flex: 1;
   overflow-y: auto;
@@ -165,7 +162,6 @@ body {
 .panel-scroll::-webkit-scrollbar { width: 3px; }
 .panel-scroll::-webkit-scrollbar-thumb { background: var(--border); }
 
-/* Sticky footer pinned to bottom of panel */
 .panel-footer {
   flex-shrink: 0;
   background: var(--bg);
@@ -200,7 +196,6 @@ input[type="text"] {
   color: var(--text);
   font-family: Arial, monospace; font-size: 12px;
   outline: none; transition: border-color 0.15s;
-  /* Ensure text doesn't overflow in narrower side panel */
   min-width: 0;
 }
 input[type="text"]:focus { border-color: var(--accent); }
@@ -368,11 +363,10 @@ input[type="text"]::placeholder { color: var(--muted); }
   font-size: 10px; font-family: Arial, monospace; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px; cursor: default;
-  /* full width in side panel — no artificial max-width */
   max-width: 100%;
 }
 
-/* ─── FOCUS & ACTION BTNS (inline) ──────── */
+/* ─── FOCUS & ACTION BTNS ────────────────── */
 .focus-btn {
   background: transparent; border: 1px solid var(--border);
   color: var(--accent);
@@ -419,7 +413,6 @@ input[type="text"]::placeholder { color: var(--muted); }
 .badge-red   { background: var(--danger); color: #fff; }
 
 /* ─── TOAST ──────────────────────────────── */
-/* In side panel: toast sits at bottom, full width */
 .toast {
   position: fixed; bottom: 0; left: 0; right: 0;
   padding: 10px 14px; font-size: 12px;
@@ -431,3 +424,65 @@ input[type="text"]::placeholder { color: var(--muted); }
 .toast.success { background: var(--success); color: #000; }
 .toast.error   { background: var(--danger);  color: #fff; }
 .toast.info    { background: var(--surface2); color: var(--text); border-top: 1px solid var(--border); }
+
+/* ─── SETTINGS PANEL ─────────────────────── */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.setting-desc {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Select dropdown */
+.setting-select {
+  flex-shrink: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+  /* simple caret */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a5a72'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+.setting-select:focus { border-color: var(--accent); }
+.setting-select option { background: var(--surface2); }
+
+/* Toggle + status label side by side */
+.setting-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.setting-toggle-wrap .footer-sub {
+  margin-top: 0;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}

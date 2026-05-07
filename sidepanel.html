@@ -27,6 +27,9 @@
     <button class="tab-nav-btn" data-panel="dedup">
       <span class="nav-icon">⊗</span>Dedup
     </button>
+    <button class="tab-nav-btn" data-panel="settings">
+      <span class="nav-icon">⚙️</span>Settings
+    </button>
   </div>
 
   <!-- ── GLOBAL STATS ── -->
@@ -46,7 +49,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       PANEL 1 — CLOSER (mass close by domain)
+       PANEL 1 — CLOSER
   ══════════════════════════════════════════ -->
   <div class="panel active" id="panel-closer">
     <div class="panel-scroll">
@@ -218,19 +221,51 @@
           <span>↻</span> Rescan
         </button>
       </div>
-      <div class="footer-row">
-        <div>
-          <div class="footer-title">Auto-detect</div>
-          <div class="footer-sub off" id="autoStatus">off</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="autoToggle" />
-          <div class="toggle-track"></div>
-          <div class="toggle-thumb"></div>
-        </label>
-      </div>
     </div>
   </div><!-- /panel-dedup -->
+
+  <!-- ══════════════════════════════════════════
+       PANEL 4 — SETTINGS
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-settings">
+    <div class="panel-scroll">
+
+      <!-- Global -->
+      <div class="section">
+        <div class="section-label">Global</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Display mode</div>
+            <div class="setting-desc">How the extension opens when you click the icon</div>
+          </div>
+          <select id="settingsUiMode" class="setting-select">
+            <option value="sidepanel">Side panel</option>
+            <option value="popup">Popup</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Dedup -->
+      <div class="section">
+        <div class="section-label">Dedup</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Auto-detect duplicates</div>
+            <div class="setting-desc">Automatically close duplicate tabs as they open</div>
+          </div>
+          <div class="setting-toggle-wrap">
+            <div class="footer-sub off" id="settingsAutoStatus">off</div>
+            <label class="toggle">
+              <input type="checkbox" id="settingsAutoDetect" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-scroll -->
+  </div><!-- /panel-settings -->
 
   <div class="toast" id="toast"></div>
 
