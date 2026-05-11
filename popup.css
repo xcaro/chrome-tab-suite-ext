@@ -13,8 +13,8 @@ body {
 }
 
 /* ─── HEADER ─────────────────────────────── */
-.header { padding: 13px 16px 11px; }
-.logo-icon { width: 28px; height: 28px; font-size: 14px; }
+.header { padding: 12px 14px 11px; }
+.logo-icon { width: 32px; height: 32px; border-radius: 8px; }
 .header-text h1 { font-size: 16px; }
 
 /* ─── GLOBAL STATS ───────────────────────── */
@@ -41,5 +41,5 @@ input[type="text"] { padding: 8px 10px 8px 30px; }
 .toast { padding: 10px 16px; }
 
 /* ─── DUP TAB LIST ───────────────────────── */
-.dup-tab-list { background: #0f0f12; }
+.dup-tab-list { background: var(--bg); }
 body.light-mode .dup-tab-list { background: var(--surface2); }

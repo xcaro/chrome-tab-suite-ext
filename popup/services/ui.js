@@ -48,14 +48,22 @@ export const GlobalStats = {
       if (!norm) continue;
       urlMap.set(norm, (urlMap.get(norm) || 0) + 1);
     }
-    document.getElementById('gDupCount').textContent =
-      [...urlMap.values()].filter(c => c > 1).length;
+    const dupCount = [...urlMap.values()].filter(c => c > 1).length;
+    const dupEl = document.getElementById('gDupCount');
+    dupEl.textContent = dupCount;
+    dupEl.className = 'g-stat-num' + (dupCount === 0 ? ' zero' : '');
 
-    document.getElementById('gActedCount').textContent = actedCount || '—';
+    const actedEl = document.getElementById('gActedCount');
+    actedEl.textContent = actedCount || '—';
+    actedEl.className = 'g-stat-num' + (actedCount > 0 ? ' warn' : '');
   },
 
   // initWithTabs: accepts shared tabsPromise from boot() — avoids a redundant query.
-  initWithTabs(tabsPromise) { return this._update(tabsPromise); },
+  // Resets actedCount to 0 on every popup open.
+  async initWithTabs(tabsPromise) {
+    await StorageService.setActedCount(0);
+    return this._update(tabsPromise);
+  },
   // refresh() issues its own query — called after user actions when tabs have changed.
   refresh()                 { return this._update(chrome.tabs.query({})); },
 };
