@@ -204,7 +204,7 @@ export function buildTabRow(tab, idx, actions = []) {
 }
 
 // ── Expandable dup group ─────────────────────────────────────
-export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false } = {}) {
+export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false, windowNames, onInternalClose } = {}) {
   const sample  = tabs[0];
   const title   = sample.title || '';
   const group   = document.createElement('div'); group.className  = 'dup-group';
@@ -226,17 +226,36 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false 
 
   let tabCount = tabs.length;
 
+  // Whether to show window dividers: only when windowNames provided and >1 unique window
+  const uniqueWindows = windowNames
+    ? new Set(tabs.map(t => t.windowId)).size
+    : 0;
+  const showDividers = uniqueWindows > 1;
+
   let rendered = false;
   function renderRows() {
     if (rendered) return;
     rendered = true;
+    let lastWindowId = null;
     tabs.forEach((tab, i) => {
+      // Insert window divider when windowId changes
+      if (showDividers && tab.windowId !== lastWindowId) {
+        const divider = document.createElement('div');
+        divider.className = 'window-divider';
+        divider.textContent = windowNames.get(tab.windowId) ?? `WINDOW ???`;
+        tabList.appendChild(divider);
+        lastWindowId = tab.windowId;
+      }
       const actions = onTabClose ? [{
         label:     '✕',
         className: 'close-tab-btn',
         title:     'Close this tab',
         onClick:   async () => {
-          try   { await chrome.tabs.remove(tab.id); await setActed(1); }
+          try   {
+            onInternalClose?.();
+            await chrome.tabs.remove(tab.id);
+            await setActed(1);
+          }
           catch { /* already closed */ }
           tabCount--;
           if (tabCount === 0 || (removeGroupWhenSingle && tabCount === 1)) { group.remove(); }

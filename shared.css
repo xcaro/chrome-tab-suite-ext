@@ -344,6 +344,17 @@ body.light-mode .toggle.accent input:checked ~ .toggle-thumb { box-shadow: none;
 .dup-tab-list { display: none; background: var(--surface2); }
 .dup-tab-list.open { display: block; }
 
+/* ─── WINDOW DIVIDER ─────────────────────── */
+.window-divider {
+  padding: 3px 10px;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
 .dup-tab-row {
   display: flex;
   align-items: center;

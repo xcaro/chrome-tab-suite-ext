@@ -16,6 +16,10 @@ const _filters = FilterService.register('closer');
 let   _hostOnly = false;
 let   _domainFilter;
 
+// Callable by ui.js to suppress the chrome.tabs.onRemoved re-render
+// that fires when a tab is closed from within the popup UI itself.
+export let suppressNextRemoved = () => {};
+
 // ── Move tabs to new window ───────────────────────────────────
 async function moveToNewWindow(tabs) {
   try {
@@ -84,6 +88,10 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
     return;
   }
 
+  // ── Build global window name map (once, before any group renders) ──
+  const allWindowIds = [...new Set(httpTabs.map(t => t.windowId))].sort((a, b) => a - b);
+  const windowNames  = new Map(allWindowIds.map((id, i) => [id, `WINDOW ${i + 1}`]));
+
   const tree = new Map();
   for (const tab of httpTabs) {
     try {
@@ -92,6 +100,28 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
       if (!tree.has(root)) tree.set(root, []);
       tree.get(root).push(tab);
     } catch { /* skip */ }
+  }
+
+  // ── Sort tabs within each domain group: window (by lastAccessed) → tab (by lastAccessed) ──
+  for (const [root, tabs] of tree) {
+    // Bucket tabs by windowId
+    const buckets = new Map();
+    for (const tab of tabs) {
+      if (!buckets.has(tab.windowId)) buckets.set(tab.windowId, []);
+      buckets.get(tab.windowId).push(tab);
+    }
+    // Sort each bucket internally by lastAccessed desc
+    for (const bucket of buckets.values()) {
+      bucket.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+    }
+    // Sort windows by their most recently accessed tab desc
+    const sortedWindows = [...buckets.entries()].sort((a, b) => {
+      const maxA = Math.max(...a[1].map(t => t.lastAccessed || 0));
+      const maxB = Math.max(...b[1].map(t => t.lastAccessed || 0));
+      return maxB - maxA;
+    });
+    // Flatten back
+    tree.set(root, sortedWindows.flatMap(([, bucket]) => bucket));
   }
 
   badge.style.display  = '';
@@ -114,6 +144,8 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
   for (const root of roots) {
     const tabs  = tree.get(root);
     const group = buildDupGroup(tabs, {
+      windowNames,
+      onInternalClose: suppressNextRemoved,
       onTabClose: async () => {
           await GlobalStats.refresh();
       },
@@ -306,4 +338,35 @@ export function init() {
   document.getElementById('btnCloserCloseAll').addEventListener('click', closeAll);
   document.getElementById('btnNewWindow').addEventListener('click', newWindow);
   PanelHooks['closer'] = render;
+
+  // ── Live update when tabs are opened or closed externally ───
+  // _internalCloseCount tracks tabs being closed via the popup UI itself.
+  // Chrome fires onRemoved for these too, so we suppress the external
+  // re-render to avoid collapsing expanded groups.
+  let _internalCloseCount = 0;
+
+  function isCloserPanelActive() {
+    return document.getElementById('panel-closer')?.classList.contains('active');
+  }
+
+  async function onTabsChanged() {
+    if (!isCloserPanelActive()) return;
+    if (_internalCloseCount > 0) return;
+    await render();
+    await GlobalStats.refresh();
+  }
+
+  chrome.tabs.onCreated.addListener(onTabsChanged);
+  chrome.tabs.onRemoved.addListener(onTabsChanged);
+  chrome.tabs.onUpdated.addListener((_id, changeInfo) => {
+    // Only re-render when the URL changes (new navigation), not on every loading event
+    if (changeInfo.url !== undefined) onTabsChanged();
+  });
+
+  // Exposed so ui.js buildDupGroup can suppress the external onRemoved
+  // that Chrome fires when a tab is closed from within the popup UI.
+  suppressNextRemoved = () => {
+    _internalCloseCount++;
+    setTimeout(() => { _internalCloseCount = Math.max(0, _internalCloseCount - 1); }, 500);
+  };
 }
