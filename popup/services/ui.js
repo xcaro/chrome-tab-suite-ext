@@ -7,6 +7,15 @@
 import { isHttpTab, normalizeUrl, _isDomainToken, normDomain } from '../../shared/url-utils.js';
 import { StorageService } from '../../services/storage.js';
 
+// ── Window color palette ──────────────────────────────────────────
+// 10 hues as HSL — luminance/opacity adjusted per mode via CSS.
+const WINDOW_HUES = [212, 28, 158, 280, 48, 340, 185, 95, 320, 8];
+
+export function windowHueForId(windowNames, windowId) {
+  const idx = [...windowNames.keys()].indexOf(windowId) % WINDOW_HUES.length;
+  return WINDOW_HUES[Math.max(0, idx)];
+}
+
 // ── Toast ────────────────────────────────────────────────────
 let _toastTimer = null;
 
@@ -237,13 +246,24 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
     if (rendered) return;
     rendered = true;
     let lastWindowId = null;
+    let windowBlock  = null;
     tabs.forEach((tab, i) => {
-      // Insert window divider when windowId changes
+      // New window block: divider + wrapper
       if (showDividers && tab.windowId !== lastWindowId) {
+        const hue   = windowHueForId(windowNames, tab.windowId);
+        const label = windowNames.get(tab.windowId) ?? 'W?';
+
         const divider = document.createElement('div');
         divider.className = 'window-divider';
-        divider.textContent = windowNames.get(tab.windowId) ?? `WINDOW ???`;
+        divider.textContent = label;
+        divider.style.setProperty('--w-hue', hue);
+
+        windowBlock = document.createElement('div');
+        windowBlock.className = 'window-block';
+        windowBlock.style.setProperty('--w-hue', hue);
+
         tabList.appendChild(divider);
+        tabList.appendChild(windowBlock);
         lastWindowId = tab.windowId;
       }
       const actions = onTabClose ? [{
@@ -264,7 +284,8 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
         },
       }] : [];
       const row = buildTabRow(tab, i, actions);
-      tabList.appendChild(row);
+      // Append into window block when dividers active, else directly into tabList
+      (windowBlock ?? tabList).appendChild(row);
     });
   }
 

@@ -349,10 +349,24 @@ body.light-mode .toggle.accent input:checked ~ .toggle-thumb { box-shadow: none;
   padding: 3px 10px;
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--muted);
-  background: var(--bg);
   border-bottom: 1px solid var(--border);
   user-select: none;
+  /* dark mode: dark tinted bg, light text */
+  background: hsl(var(--w-hue), 40%, 18%);
+  color: hsl(var(--w-hue), 70%, 72%);
+}
+body.light-mode .window-divider {
+  /* light mode: light tinted bg, dark text */
+  background: hsl(var(--w-hue), 55%, 92%);
+  color: hsl(var(--w-hue), 50%, 32%);
+}
+
+/* border-left on window block wrapping all rows of the same window */
+.window-block {
+  border-left: 2px solid hsl(var(--w-hue), 50%, 45%);
+}
+body.light-mode .window-block {
+  border-left-color: hsl(var(--w-hue), 55%, 52%);
 }
 
 .dup-tab-row {
