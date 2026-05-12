@@ -3,31 +3,26 @@
 // Registers with Registry. Uses StorageService + FilterService.
 // =============================================================
 
-import { Registry }        from '../registry.js';
-import { StorageService }  from '../../services/storage.js';
-import { normalizeUrl }    from '../../shared/url-utils.js';
+import { Registry }                        from '../registry.js';
+import { StorageService }                  from '../../services/storage.js';
+import { normalizeUrl, isProcessableUrl }  from '../../shared/url-utils.js';
 
 const STORAGE_KEY      = 'autoDetect';
 const KEEP_NEWEST_KEY  = 'keepNewest';
-
-// Only process http/https/ftp — never touch chrome://, about:, etc.
-function _isProcessable(url) {
-  return !!(url && /^(https?|ftp):\/\//.test(url));
-}
 
 async function checkAndCloseDuplicate(newTabId, newTabUrl) {
   try {
     if (!(await StorageService.isEnabled(STORAGE_KEY, false))) return;
 
     // Hard guard — never attempt any tab operation on non-http URLs
-    if (!_isProcessable(newTabUrl)) return;
+    if (!isProcessableUrl(newTabUrl)) return;
 
     const norm = normalizeUrl(newTabUrl);
     if (!norm) return;
 
     const allTabs    = await chrome.tabs.query({});
     const duplicates = allTabs.filter(t =>
-      t.id !== newTabId && _isProcessable(t.url) && normalizeUrl(t.url) === norm
+      t.id !== newTabId && isProcessableUrl(t.url) && normalizeUrl(t.url) === norm
     );
     if (!duplicates.length) return;
 
@@ -62,12 +57,12 @@ async function checkAndCloseDuplicate(newTabId, newTabUrl) {
 }
 
 function onUpdated(tabId, changeInfo, tab) {
-  if (changeInfo.status !== 'complete' || !_isProcessable(tab.url)) return;
+  if (changeInfo.status !== 'complete' || !isProcessableUrl(tab.url)) return;
   checkAndCloseDuplicate(tabId, tab.url);
 }
 
 function onCreated(tab) {
-  if (_isProcessable(tab.url)) {
+  if (isProcessableUrl(tab.url)) {
     checkAndCloseDuplicate(tab.id, tab.url);
   }
 }

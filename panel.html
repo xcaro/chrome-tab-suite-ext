@@ -56,10 +56,10 @@
       <div class="g-stat-num" id="gDupCount">—</div>
       <div class="g-stat-label">Duplicates</div>
     </div>
-    <div class="g-stat">
-      <div class="g-stat-num" id="gActedCount">0</div>
-      <div class="g-stat-label">Processed</div>
-    </div>
+<!--    <div class="g-stat">-->
+<!--      <div class="g-stat-num" id="gActedCount">0</div>-->
+<!--      <div class="g-stat-label">Processed</div>-->
+<!--    </div>-->
   </div>
 
   <!-- ══════════════════════════════════════════
@@ -81,14 +81,14 @@
         <div id="closerFilterHint" style="display:none; font-size:10px; color:var(--muted); margin-top:6px;">
           Showing only tabs matching domain filter
         </div>
-        <label class="check-row" style="margin-top:8px;">
+        <label class="check-row">
           <input type="checkbox" id="closerHostOnlyToggle" />
           <span class="check-label">Host-only tabs</span>
         </label>
-        <div id="closerWindowFilterRow" style="display:none; margin-top:8px;">
-          <div class="section-label" style="margin-bottom:5px;">Filter by window</div>
-          <div class="tag-list" id="closerWindowTags"></div>
-        </div>
+      </div>
+      <div class="section" id="closerWindowFilterRow" style="display:none;">
+        <div class="section-label">Filter by window</div>
+        <div class="tag-list" id="closerWindowTags"></div>
       </div>
 
       <div class="section" style="border-bottom:none">
@@ -126,14 +126,6 @@
     <div class="panel-scroll">
 
       <div class="section">
-        <div class="section-label">Folder name</div>
-        <div class="input-wrap">
-          <span class="input-icon">📁</span>
-          <input type="text" id="folderName" placeholder="e.g. Work – 03/16/2026" />
-        </div>
-      </div>
-
-      <div class="section">
         <div class="section-label">Filter by domain <span class="badge badge-green filter-on-badge" id="vaultFilterBadge" style="display:none">ON</span></div>
         <div class="input-row">
           <div class="input-wrap">
@@ -156,6 +148,13 @@
     </div><!-- /panel-scroll -->
 
     <div class="panel-footer">
+      <div class="section">
+        <div class="section-label">Folder name</div>
+        <div class="input-wrap">
+          <span class="input-icon">📁</span>
+          <input type="text" id="folderName" placeholder="e.g. Work – 03/16/2026" />
+        </div>
+      </div>
       <div class="section" style="border-bottom:1px solid var(--border); padding:10px 16px;">
         <div class="section-label">Options</div>
         <div class="check-list">

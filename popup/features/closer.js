@@ -93,6 +93,100 @@ function makeCloseAction(tab) {
   };
 }
 
+// ── Domain grouping helpers ───────────────────────────────────────────────────
+
+// Group tabs by PSL-aware root domain. Returns Map<root, Tab[]>.
+function groupTabsByDomain(tabs) {
+  const tree = new Map();
+  for (const tab of tabs) {
+    try {
+      const host = new URL(tab.url).hostname.replace(/^www\./, '');
+      const { root } = parseDomainLevels(host);
+      if (!tree.has(root)) tree.set(root, []);
+      tree.get(root).push(tab);
+    } catch { /* skip unparseable URLs */ }
+  }
+  return tree;
+}
+
+// Sort tabs within each domain group: most-recently-accessed window first,
+// tabs within each window also sorted by lastAccessed desc.
+// Mutates the Map values in place and returns the Map.
+function sortGroups(tree) {
+  for (const [root, tabs] of tree) {
+    const buckets = new Map();
+    for (const tab of tabs) {
+      if (!buckets.has(tab.windowId)) buckets.set(tab.windowId, []);
+      buckets.get(tab.windowId).push(tab);
+    }
+    for (const bucket of buckets.values()) {
+      bucket.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+    }
+    const sortedWindows = [...buckets.entries()].sort((a, b) => {
+      const maxA = Math.max(...a[1].map(t => t.lastAccessed || 0));
+      const maxB = Math.max(...b[1].map(t => t.lastAccessed || 0));
+      return maxB - maxA;
+    });
+    tree.set(root, sortedWindows.flatMap(([, bucket]) => bucket));
+  }
+  return tree;
+}
+
+// Sort domain groups by most recently accessed tab within each group.
+// Returns a sorted array of root-domain strings.
+function sortedRoots(tree) {
+  const rootLastAccessed = new Map();
+  for (const [root, tabs] of tree) {
+    rootLastAccessed.set(root, Math.max(...tabs.map(t => t.lastAccessed || 0)));
+  }
+  return [...tree.keys()].sort((a, b) =>
+    (rootLastAccessed.get(b) - rootLastAccessed.get(a)) || a.localeCompare(b)
+  );
+}
+
+// Build the custom header buttons (move-to-window ⧉ and close-all ✕)
+// and inject them into an existing buildDupGroup element.
+function buildGroupHeader(root, tabs, group) {
+  const header  = group.querySelector('.dup-header');
+  const chevron = header?.querySelector('.dup-chevron');
+  if (!header || !chevron) return;
+
+  if (tabs.length > 1) {
+    const groupBtn       = document.createElement('button');
+    groupBtn.className   = 'tab-group-btn';
+    groupBtn.textContent = '⧉';
+    groupBtn.title       = `Move "${root}" tabs to new window`;
+    groupBtn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const winId = await moveToNewWindow(tabs);
+      if (winId) {
+        showToast(`Moved ${tabs.length} "${root}" tab(s) to new window`);
+        await render();
+        await GlobalStats.refresh();
+      }
+    });
+    header.insertBefore(groupBtn, chevron);
+  }
+
+  const closeBtn       = document.createElement('button');
+  closeBtn.className   = 'tab-group-btn';
+  closeBtn.textContent = '✕';
+  closeBtn.title       = `Close all "${root}" tabs`;
+  closeBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const others = tabs.filter(t => t.id !== activeTab?.id).map(t => t.id);
+    const active = tabs.find(t => t.id === activeTab?.id);
+    const toClose = active ? [...others, active.id] : others;
+    try { await chrome.tabs.remove(toClose); } catch { /* some already closed */ }
+    await setActed(toClose.length);
+    showToast(`Closed ${toClose.length} "${root}" tab(s)`);
+    await render();
+    await GlobalStats.refresh();
+  });
+  header.insertBefore(closeBtn, chevron);
+}
+
 // ── Grouped mode (no domain filter) ──────────────────────────────────────────
 async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
   const httpTabs = FilterService.filterTabs('closer', allTabs)
@@ -115,7 +209,7 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
 
   // Build global window name map once — W1, W2, ... sorted by windowId
   const allWindowIds = [...new Set(httpTabs.map(t => t.windowId))].sort((a, b) => a - b);
-  const windowNames  = new Map(allWindowIds.map((id, i) => [id, `W${i + 1}`]));
+  const windowNames  = new Map(allWindowIds.map((id, i) => [id, `WINDOW ${i + 1}`]));
 
   // Render window filter tags (row hidden when only 1 window)
   const windowTabCounts = new Map(allWindowIds.map(id => [
@@ -128,51 +222,14 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
     ? httpTabs.filter(t => _selectedWindows.has(t.windowId))
     : httpTabs;
 
-  // Group by domain root
-  const tree = new Map();
-  for (const tab of visibleTabs) {
-    try {
-      const host = new URL(tab.url).hostname.replace(/^www\./, '');
-      const { root } = parseDomainLevels(host);
-      if (!tree.has(root)) tree.set(root, []);
-      tree.get(root).push(tab);
-    } catch { /* skip */ }
-  }
-
-  // Sort tabs within each domain: window (by lastAccessed desc) → tab (by lastAccessed desc)
-  for (const [root, tabs] of tree) {
-    const buckets = new Map();
-    for (const tab of tabs) {
-      if (!buckets.has(tab.windowId)) buckets.set(tab.windowId, []);
-      buckets.get(tab.windowId).push(tab);
-    }
-    for (const bucket of buckets.values()) {
-      bucket.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
-    }
-    const sortedWindows = [...buckets.entries()].sort((a, b) => {
-      const maxA = Math.max(...a[1].map(t => t.lastAccessed || 0));
-      const maxB = Math.max(...b[1].map(t => t.lastAccessed || 0));
-      return maxB - maxA;
-    });
-    tree.set(root, sortedWindows.flatMap(([, bucket]) => bucket));
-  }
+  const tree  = sortGroups(groupTabsByDomain(visibleTabs));
+  const roots = sortedRoots(tree);
 
   badge.style.display        = '';
   badge.textContent          = visibleTabs.length;
   btnAll.style.display       = 'none';
   btnNewWindow.style.display = 'none';
   list.innerHTML             = '';
-
-  // Sort domain groups by most recently accessed tab
-  const rootLastAccessed = new Map();
-  for (const [root, tabs] of tree) {
-    let max = 0;
-    for (const t of tabs) { if ((t.lastAccessed || 0) > max) max = t.lastAccessed || 0; }
-    rootLastAccessed.set(root, max);
-  }
-  const roots = [...tree.keys()].sort((a, b) =>
-    (rootLastAccessed.get(b) - rootLastAccessed.get(a)) || a.localeCompare(b)
-  );
 
   for (const root of roots) {
     const tabs  = tree.get(root);
@@ -182,11 +239,13 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
       onTabClose: async () => { await GlobalStats.refresh(); },
     });
 
+    // Patch count label (buildDupGroup uses ×N format; grouped view just shows N)
     const countEl = group.querySelector('.dup-count');
     if (countEl) countEl.textContent = tabs.length > 1 ? `${tabs.length}` : '';
 
+    // Window count badge
     if (tabs.length > 1) {
-      const winCount = new Set(tabs.map(t => t.windowId)).size;
+      const winCount       = new Set(tabs.map(t => t.windowId)).size;
       const winBadge       = document.createElement('span');
       winBadge.className   = 'dup-count win-count-badge';
       winBadge.textContent = `${winCount}w`;
@@ -194,49 +253,11 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
       if (countEl) countEl.after(winBadge);
     }
 
+    // Patch title to show root domain
     const titleEl = group.querySelector('.dup-title');
     if (titleEl) { titleEl.textContent = root; titleEl.title = root; }
 
-    const header = group.querySelector('.dup-header');
-    if (header) {
-      const chevron = header.querySelector('.dup-chevron');
-      if (tabs.length > 1) {
-        const groupBtn       = document.createElement('button');
-        groupBtn.className   = 'tab-group-btn';
-        groupBtn.textContent = '⧉';
-        groupBtn.title       = `Move "${root}" tabs to new window`;
-        groupBtn.addEventListener('click', async e => {
-          e.stopPropagation();
-          const winId = await moveToNewWindow(tabs);
-          if (winId) {
-            showToast(`Moved ${tabs.length} "${root}" tab(s) to new window`);
-            await render();
-            await GlobalStats.refresh();
-          }
-        });
-        header.insertBefore(groupBtn, chevron);
-      }
-
-      const closeBtn       = document.createElement('button');
-      closeBtn.className   = 'tab-group-btn';
-      closeBtn.textContent = '✕';
-      closeBtn.title       = `Close all "${root}" tabs`;
-      closeBtn.addEventListener('click', async e => {
-        e.stopPropagation();
-        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const others = tabs.filter(t => t.id !== activeTab?.id);
-        const active = tabs.find(t => t.id === activeTab?.id);
-        let closed = 0;
-        for (const t of others) { try { await chrome.tabs.remove(t.id); closed++; } catch {} }
-        if (active) { try { await chrome.tabs.remove(active.id); closed++; } catch {} }
-        await setActed(closed);
-        showToast(`Closed ${closed} "${root}" tab(s)`);
-        await render();
-        await GlobalStats.refresh();
-      });
-      header.insertBefore(closeBtn, chevron);
-    }
-
+    buildGroupHeader(root, tabs, group);
     list.appendChild(group);
   }
 }
@@ -302,11 +323,10 @@ async function closeAll() {
   const result = await getTargetTabs();
   if (!result) { btn.disabled = false; return; }
   const [others, active] = result;
-  let closed = 0;
-  for (const tab of others) { try { await chrome.tabs.remove(tab.id); closed++; } catch {} }
-  if (active) { try { await chrome.tabs.remove(active.id); closed++; } catch {} }
-  await setActed(closed);
-  showToast(`Closed ${closed} tab(s)`);
+  const toClose = active ? [...others.map(t => t.id), active.id] : others.map(t => t.id);
+  try { await chrome.tabs.remove(toClose); } catch { /* some already closed */ }
+  await setActed(toClose.length);
+  showToast(`Closed ${toClose.length} tab(s)`);
   await render();
   await GlobalStats.refresh();
   btn.disabled = false;

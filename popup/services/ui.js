@@ -37,22 +37,33 @@ export async function focusTab(tab) {
 // ── Acted count ──────────────────────────────────────────────
 export async function setActed(n) {
   await StorageService.setActedCount(n);
-  const el = document.getElementById('gActedCount');
-  if (el) el.textContent = n;
+  // const el = document.getElementById('gActedCount');
+  // if (el) el.textContent = n;
 }
 
 // ── Global stats ─────────────────────────────────────────────
+// Window count is cached and kept up-to-date via listeners so it never
+// blocks the critical stats render path (tabs + dupes + acted).
+let _cachedWindowCount = 0;
+
+function _initWindowCountCache() {
+  chrome.windows.getAll().then(wins => { _cachedWindowCount = wins.length; });
+  chrome.windows.onCreated.addListener(() => { _cachedWindowCount++; });
+  chrome.windows.onRemoved.addListener(() => { _cachedWindowCount = Math.max(0, _cachedWindowCount - 1); });
+}
+
 export const GlobalStats = {
   async _update(tabsPromise) {
-    const [allTabs, allWindows, actedCount] = await Promise.all([
+    // Tabs, dupes, and acted count are fetched together on the critical path.
+    // Window count is read from the cache — never awaited here.
+    const [allTabs, actedCount] = await Promise.all([
       tabsPromise,
-      chrome.windows.getAll(),
       StorageService.getActedCount(),
     ]);
     const httpTabs = allTabs.filter(isHttpTab);
 
     const winEl = document.getElementById('gWindowsOpen');
-    if (winEl) winEl.textContent = allWindows.length;
+    if (winEl) winEl.textContent = _cachedWindowCount;
 
     document.getElementById('gTabsOpen').textContent = httpTabs.length;
 
@@ -67,19 +78,21 @@ export const GlobalStats = {
     dupEl.textContent = dupCount;
     dupEl.className = 'g-stat-num' + (dupCount === 0 ? ' zero' : '');
 
-    const actedEl = document.getElementById('gActedCount');
-    actedEl.textContent = actedCount || '—';
-    actedEl.className = 'g-stat-num' + (actedCount > 0 ? ' warn' : '');
+    // const actedEl = document.getElementById('gActedCount');
+    // actedEl.textContent = actedCount || '—';
+    // actedEl.className = 'g-stat-num' + (actedCount > 0 ? ' warn' : '');
   },
 
   // initWithTabs: accepts shared tabsPromise from boot() — avoids a redundant query.
   // Resets actedCount to 0 on every popup open.
+  // Also kicks off the window count cache (once, for the lifetime of the popup).
   async initWithTabs(tabsPromise) {
+    _initWindowCountCache();
     await StorageService.setActedCount(0);
     return this._update(tabsPromise);
   },
   // refresh() issues its own query — called after user actions when tabs have changed.
-  refresh()                 { return this._update(chrome.tabs.query({})); },
+  refresh() { return this._update(chrome.tabs.query({})); },
 };
 
 // ── Toggle label ─────────────────────────────────────────────
@@ -89,6 +102,12 @@ export function setToggleLabel(el, on) {
 }
 
 // ── Panel nav ────────────────────────────────────────────────
+
+// Map from panel id (data-panel attribute) to its render/refresh function.
+// Each panel registers itself here during init() so the nav can trigger
+// a re-render when the user switches tabs.
+// Valid keys: 'closer' | 'vault' | 'dedup' | 'settings'
+/** @type {Record<string, () => void | Promise<void>>} */
 export const PanelHooks = {};
 
 export function initPanelNav() {

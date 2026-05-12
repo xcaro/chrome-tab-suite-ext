@@ -83,22 +83,19 @@ async function closeAll() {
   const { groups } = await scan();
   if (!groups.length) return;
 
-  let closed = 0;
-  for (const tabs of groups) {
-    const toClose = _keepNewest
+  const toClose = groups.flatMap(tabs =>
+    _keepNewest
       ? tabs.slice(0, -1).map(t => t.id)
-      : tabs.slice(1).map(t => t.id);
-    for (const id of toClose) {
-      try { await chrome.tabs.remove(id); closed++; } catch { /* already closed */ }
-    }
-  }
+      : tabs.slice(1).map(t => t.id)
+  );
+  if (!toClose.length) return;
 
-  await setActed(closed);
-  showToast(`Closed ${closed} duplicate tab(s)`);
-  setTimeout(async () => {
-      await render();
-      await GlobalStats.refresh();
-  }, 400);
+  try { await chrome.tabs.remove(toClose); } catch { /* some already closed */ }
+
+  await setActed(toClose.length);
+  showToast(`Closed ${toClose.length} duplicate tab(s)`);
+  await render();
+  await GlobalStats.refresh();
 }
 
 // ── Keep mode toggle ──────────────────────────────────────────

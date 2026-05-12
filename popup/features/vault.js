@@ -69,10 +69,27 @@ async function renderMatchList() {
   matched.forEach((tab, i) => list.appendChild(buildTabRow(tab, i)));
 }
 
-// ── Bookmark save — grouped ───────────────────────────────────
-async function saveGrouped(tabs, titles, parentId) {
-  const tree = new Map();
+// ── Bookmark save ─────────────────────────────────────────────
+// Single entry point for both grouped and flat save modes.
+// grouped=true  → 2-level domain hierarchy (root → subdomain → bookmarks)
+// grouped=false → flat list under the parent folder
+// Progress range passed in as [start, end] within the overall 0–100 scale.
+async function saveTabs(tabs, titles, parentId, { grouped }) {
+  const total = tabs.length;
+  let   done  = 0;
 
+  const tick = () => setProgress(50 + Math.round((++done / total) * 45));
+
+  if (!grouped) {
+    for (let i = 0; i < tabs.length; i++) {
+      await chrome.bookmarks.create({ parentId, title: titles[i], url: tabs[i].url });
+      tick();
+    }
+    return;
+  }
+
+  // Build 2-level domain tree: Map<root, Map<subOrDirect, {tab, title}[]>>
+  const tree = new Map();
   tabs.forEach((tab, i) => {
     let host = '';
     try { host = new URL(tab.url).hostname.replace(/^www\./, ''); } catch { return; }
@@ -84,12 +101,9 @@ async function saveGrouped(tabs, titles, parentId) {
     sm.get(key).push({ tab, title: titles[i] });
   });
 
-  const roots = [...tree.keys()].sort();
-  let done = 0;
-
-  for (const root of roots) {
-    const sm   = tree.get(root);
-    const rf   = await chrome.bookmarks.create({ parentId, title: root });
+  for (const root of [...tree.keys()].sort()) {
+    const sm = tree.get(root);
+    const rf = await chrome.bookmarks.create({ parentId, title: root });
     const keys = [...sm.keys()].sort((a, b) =>
       a === '_direct' ? -1 : b === '_direct' ? 1 : a.localeCompare(b)
     );
@@ -99,17 +113,9 @@ async function saveGrouped(tabs, titles, parentId) {
         : (await chrome.bookmarks.create({ parentId: rf.id, title: key })).id;
       for (const { tab, title } of items) {
         await chrome.bookmarks.create({ parentId: target, title, url: tab.url });
-        setProgress(50 + Math.round((++done / tabs.length) * 45));
+        tick();
       }
     }
-  }
-}
-
-// ── Bookmark save — flat ──────────────────────────────────────
-async function saveFlat(tabs, titles, parentId) {
-  for (let i = 0; i < tabs.length; i++) {
-    await chrome.bookmarks.create({ parentId, title: titles[i], url: tabs[i].url });
-    setProgress(50 + Math.round(((i + 1) / tabs.length) * 45));
   }
 }
 
@@ -143,11 +149,11 @@ async function save() {
     const titles = await resolveAllTitles(tabs);
     setProgress(40);
 
-    const root = await chrome.bookmarks.create({ parentId: '1', title: folderName });
+    const root    = await chrome.bookmarks.create({ parentId: '1', title: folderName });
+    const grouped = !FilterService.hasFilters('vault');
     setProgress(50);
 
-    if (FilterService.hasFilters('vault')) await saveFlat(tabs, titles, root.id);
-    else                                     await saveGrouped(tabs, titles, root.id);
+    await saveTabs(tabs, titles, root.id, { grouped });
 
     setProgress(100);
 

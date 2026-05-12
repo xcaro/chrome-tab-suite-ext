@@ -16,6 +16,12 @@ export function isHttpTab(tab) {
   return !!(tab.url && /^https?:\/\/|^ftp:\/\//.test(tab.url));
 }
 
+// URL-string variant of isHttpTab — used by background features that
+// receive raw URL strings rather than tab objects.
+export function isProcessableUrl(url) {
+  return !!(url && /^(https?|ftp):\/\//.test(url));
+}
+
 export function normDomain(raw) {
   return raw.trim().toLowerCase()
     .replace(/^https?:\/\//i, '')
@@ -87,6 +93,8 @@ const _PUBLIC_SUFFIXES = new Set([
   'workers.dev',
 ]);
 
+// Cache size is bounded to avoid unbounded growth in long popup sessions.
+const _ROOT_DOMAIN_CACHE_MAX = 500;
 const _rootDomainCache = new Map();
 
 function _getRootDomain(h) {
@@ -109,6 +117,7 @@ function _getRootDomain(h) {
     }
   }
   if (!root) root = parts.length >= 2 ? parts.slice(-2).join('.') : h;
+  if (_rootDomainCache.size >= _ROOT_DOMAIN_CACHE_MAX) _rootDomainCache.clear();
   _rootDomainCache.set(h, root);
   return root;
 }

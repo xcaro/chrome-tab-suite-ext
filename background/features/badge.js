@@ -4,14 +4,10 @@
 // Clears the badge automatically when there are no duplicates.
 // =============================================================
 
-import { Registry }     from '../registry.js';
-import { normalizeUrl } from '../../shared/url-utils.js';
+import { Registry }          from '../registry.js';
+import { normalizeUrl, isProcessableUrl } from '../../shared/url-utils.js';
 
 const BADGE_COLOR = '#E0462A';
-
-function _isProcessable(url) {
-  return !!(url && /^(https?|ftp):\/\//.test(url));
-}
 
 // Count URL groups that have 2+ tabs → number of "duplicate groups"
 async function updateBadge() {
@@ -20,7 +16,7 @@ async function updateBadge() {
     const counts  = new Map();
 
     for (const tab of allTabs) {
-      if (!_isProcessable(tab.url)) continue;
+      if (!isProcessableUrl(tab.url)) continue;
       const norm = normalizeUrl(tab.url);
       if (!norm) continue;
       counts.set(norm, (counts.get(norm) ?? 0) + 1);
@@ -37,13 +33,28 @@ async function updateBadge() {
   } catch { /* service worker may have been killed mid-flight */ }
 }
 
-// Throttle rapid-fire tab events (e.g. bulk open/close)
-let _timer = null;
+// Leading + trailing debounce: fires immediately on the first event, then
+// once more after a 300ms quiet period following the last event.
+// This keeps the badge responsive for single tab changes while still
+// coalescing rapid bulk close/open sequences (e.g. "Close all").
+let _timer    = null;
+let _pending  = false;
+
 function scheduleUpdate() {
-  if (_timer) return;
+  if (!_timer) {
+    // Leading edge: fire immediately
+    updateBadge();
+  } else {
+    // Mark that another event arrived while the cooldown is running
+    _pending = true;
+  }
+  clearTimeout(_timer);
   _timer = setTimeout(() => {
     _timer = null;
-    updateBadge();
+    if (_pending) {
+      _pending = false;
+      updateBadge();
+    }
   }, 300);
 }
 
@@ -73,6 +84,9 @@ Registry.register({
     chrome.tabs.onCreated.removeListener(onCreated);
     chrome.tabs.onRemoved.removeListener(onRemoved);
     chrome.tabs.onReplaced.removeListener(onReplaced);
+    clearTimeout(_timer);
+    _timer   = null;
+    _pending = false;
     chrome.action.setBadgeText({ text: '' }).catch(() => {});
   },
 });
