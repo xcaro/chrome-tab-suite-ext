@@ -8,35 +8,27 @@ import { FilterService } from '../../services/filter.js';
 import {
   showToast, setActed, GlobalStats,
   PanelHooks, createDomainFilter,
-  buildTabRow, buildDupGroup,
+  buildTabRow, buildDupGroup, windowHueForId,
 } from '../services/ui.js';
 
-// ── State ────────────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────────────────
 const _filters = FilterService.register('closer');
 let   _hostOnly = false;
 let   _domainFilter;
+let   _selectedWindows = new Set(); // windowIds selected in window filter
 
 // Callable by ui.js to suppress the chrome.tabs.onRemoved re-render
 // that fires when a tab is closed from within the popup UI itself.
 export let suppressNextRemoved = () => {};
 
-// ── Move tabs to new window ───────────────────────────────────
+// ── Move tabs to new window ───────────────────────────────────────────────────
 async function moveToNewWindow(tabs) {
   try {
-    // Sort by index so tab order is preserved in the new window
     const sorted = [...tabs].sort((a, b) => a.index - b.index);
-
-    // Create the new window with the first tab to get a windowId
-    const newWin = await chrome.windows.create({
-      tabId:   sorted[0].id,
-      focused: false,
-    });
-
-    // Move remaining tabs into the new window, appending in order
+    const newWin = await chrome.windows.create({ tabId: sorted[0].id, focused: false });
     for (let i = 1; i < sorted.length; i++) {
       await chrome.tabs.move(sorted[i].id, { windowId: newWin.id, index: -1 });
     }
-
     return newWin.id;
   } catch (err) {
     showToast('Could not move tabs: ' + err.message, 'error');
@@ -44,8 +36,7 @@ async function moveToNewWindow(tabs) {
   }
 }
 
-
-// ── Host-only check ──────────────────────────────────────────
+// ── Host-only check ───────────────────────────────────────────────────────────
 function isHostOnly(url) {
   try {
     const u = new URL(url);
@@ -53,7 +44,41 @@ function isHostOnly(url) {
   } catch { return false; }
 }
 
-// ── Close action ─────────────────────────────────────────────
+// ── Window filter UI ──────────────────────────────────────────────────────────
+// Rebuilds the window tag pills. Called after every renderGrouped() so the
+// available windows stay in sync with the current tab list.
+function renderWindowFilter(windowNames, windowTabCounts) {
+  const row  = document.getElementById('closerWindowFilterRow');
+  const list = document.getElementById('closerWindowTags');
+  if (!row || !list) return;
+
+  if (windowNames.size < 2) {
+    row.style.display = 'none';
+    _selectedWindows.clear();
+    return;
+  }
+  row.style.display = '';
+  list.innerHTML = '';
+
+  for (const [winId, label] of windowNames) {
+    const hue      = windowHueForId(windowNames, winId);
+    const selected = _selectedWindows.has(winId);
+    const count    = windowTabCounts?.get(winId) ?? '';
+    const tag      = document.createElement('div');
+    tag.className  = 'tag window-tag' + (selected ? ' window-tag-active' : '');
+    tag.textContent = count ? `${label} (${count})` : label;
+    tag.style.setProperty('--w-hue', hue);
+    tag.title = `${selected ? 'Deselect' : 'Select'} ${label}`;
+    tag.addEventListener('click', () => {
+      if (_selectedWindows.has(winId)) _selectedWindows.delete(winId);
+      else                              _selectedWindows.add(winId);
+      render();
+    });
+    list.appendChild(tag);
+  }
+}
+
+// ── Close action ──────────────────────────────────────────────────────────────
 function makeCloseAction(tab) {
   return {
     label:     '✕',
@@ -68,15 +93,15 @@ function makeCloseAction(tab) {
   };
 }
 
-// ── Grouped mode (no filter) ──────────────────────────────────
+// ── Grouped mode (no domain filter) ──────────────────────────────────────────
 async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
   const httpTabs = FilterService.filterTabs('closer', allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
   if (!httpTabs.length) {
-    badge.style.display  = 'none';
-    btnAll.style.display = 'none';
-    btnAll.disabled      = true;
+    badge.style.display        = 'none';
+    btnAll.style.display       = 'none';
+    btnAll.disabled            = true;
     btnNewWindow.style.display = 'none';
     btnNewWindow.disabled      = true;
     list.innerHTML = `
@@ -88,12 +113,24 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
     return;
   }
 
-  // ── Build global window name map (once, before any group renders) ──
+  // Build global window name map once — W1, W2, ... sorted by windowId
   const allWindowIds = [...new Set(httpTabs.map(t => t.windowId))].sort((a, b) => a - b);
-  const windowNames  = new Map(allWindowIds.map((id, i) => [id, `WINDOW ${i + 1}`]));
+  const windowNames  = new Map(allWindowIds.map((id, i) => [id, `W${i + 1}`]));
 
+  // Render window filter tags (row hidden when only 1 window)
+  const windowTabCounts = new Map(allWindowIds.map(id => [
+    id, httpTabs.filter(t => t.windowId === id).length,
+  ]));
+  renderWindowFilter(windowNames, windowTabCounts);
+
+  // Apply window filter
+  const visibleTabs = _selectedWindows.size > 0
+    ? httpTabs.filter(t => _selectedWindows.has(t.windowId))
+    : httpTabs;
+
+  // Group by domain root
   const tree = new Map();
-  for (const tab of httpTabs) {
+  for (const tab of visibleTabs) {
     try {
       const host = new URL(tab.url).hostname.replace(/^www\./, '');
       const { root } = parseDomainLevels(host);
@@ -102,35 +139,31 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
     } catch { /* skip */ }
   }
 
-  // ── Sort tabs within each domain group: window (by lastAccessed) → tab (by lastAccessed) ──
+  // Sort tabs within each domain: window (by lastAccessed desc) → tab (by lastAccessed desc)
   for (const [root, tabs] of tree) {
-    // Bucket tabs by windowId
     const buckets = new Map();
     for (const tab of tabs) {
       if (!buckets.has(tab.windowId)) buckets.set(tab.windowId, []);
       buckets.get(tab.windowId).push(tab);
     }
-    // Sort each bucket internally by lastAccessed desc
     for (const bucket of buckets.values()) {
       bucket.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
     }
-    // Sort windows by their most recently accessed tab desc
     const sortedWindows = [...buckets.entries()].sort((a, b) => {
       const maxA = Math.max(...a[1].map(t => t.lastAccessed || 0));
       const maxB = Math.max(...b[1].map(t => t.lastAccessed || 0));
       return maxB - maxA;
     });
-    // Flatten back
     tree.set(root, sortedWindows.flatMap(([, bucket]) => bucket));
   }
 
-  badge.style.display  = '';
-  badge.textContent    = httpTabs.length;
-  btnAll.style.display = 'none';
+  badge.style.display        = '';
+  badge.textContent          = visibleTabs.length;
+  btnAll.style.display       = 'none';
   btnNewWindow.style.display = 'none';
-  list.innerHTML = '';
+  list.innerHTML             = '';
 
-  // Sort by most recently accessed
+  // Sort domain groups by most recently accessed tab
   const rootLastAccessed = new Map();
   for (const [root, tabs] of tree) {
     let max = 0;
@@ -146,45 +179,42 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
     const group = buildDupGroup(tabs, {
       windowNames,
       onInternalClose: suppressNextRemoved,
-      onTabClose: async () => {
-          await GlobalStats.refresh();
-      },
+      onTabClose: async () => { await GlobalStats.refresh(); },
     });
 
     const countEl = group.querySelector('.dup-count');
     if (countEl) countEl.textContent = tabs.length > 1 ? `${tabs.length}` : '';
 
-    // Window count badge — only shown when there are multiple tabs (same condition as ⧉ button)
     if (tabs.length > 1) {
       const winCount = new Set(tabs.map(t => t.windowId)).size;
-      const winBadge = document.createElement('span');
-      winBadge.className = 'dup-count win-count-badge';
+      const winBadge       = document.createElement('span');
+      winBadge.className   = 'dup-count win-count-badge';
       winBadge.textContent = `${winCount}w`;
-      winBadge.title = `${winCount} window${winCount > 1 ? 's' : ''}`;
+      winBadge.title       = `${winCount} window${winCount > 1 ? 's' : ''}`;
       if (countEl) countEl.after(winBadge);
     }
 
     const titleEl = group.querySelector('.dup-title');
     if (titleEl) { titleEl.textContent = root; titleEl.title = root; }
 
-    const header  = group.querySelector('.dup-header');
+    const header = group.querySelector('.dup-header');
     if (header) {
       const chevron = header.querySelector('.dup-chevron');
       if (tabs.length > 1) {
-          const groupBtn = document.createElement('button');
-          groupBtn.className = 'tab-group-btn';
-          groupBtn.textContent = '⧉';
-          groupBtn.title = `Move "${root}" tabs to new window`;
-          groupBtn.addEventListener('click', async e => {
-              e.stopPropagation();
-              const winId = await moveToNewWindow(tabs);
-              if (winId) {
-                  showToast(`Moved ${tabs.length} "${root}" tab(s) to new window`);
-                  await render();
-                  await GlobalStats.refresh();
-              }
-          });
-          header.insertBefore(groupBtn, chevron);
+        const groupBtn       = document.createElement('button');
+        groupBtn.className   = 'tab-group-btn';
+        groupBtn.textContent = '⧉';
+        groupBtn.title       = `Move "${root}" tabs to new window`;
+        groupBtn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const winId = await moveToNewWindow(tabs);
+          if (winId) {
+            showToast(`Moved ${tabs.length} "${root}" tab(s) to new window`);
+            await render();
+            await GlobalStats.refresh();
+          }
+        });
+        header.insertBefore(groupBtn, chevron);
       }
 
       const closeBtn       = document.createElement('button');
@@ -194,8 +224,8 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
       closeBtn.addEventListener('click', async e => {
         e.stopPropagation();
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const others  = tabs.filter(t => t.id !== activeTab?.id);
-        const active  = tabs.find(t => t.id === activeTab?.id);
+        const others = tabs.filter(t => t.id !== activeTab?.id);
+        const active = tabs.find(t => t.id === activeTab?.id);
         let closed = 0;
         for (const t of others) { try { await chrome.tabs.remove(t.id); closed++; } catch {} }
         if (active) { try { await chrome.tabs.remove(active.id); closed++; } catch {} }
@@ -211,15 +241,15 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
   }
 }
 
-// ── Filtered mode ─────────────────────────────────────────────
+// ── Filtered mode (domain filter active) ─────────────────────────────────────
 async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
   const matched = FilterService.filterTabs('closer', allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
   if (!matched.length) {
-    badge.style.display  = 'none';
-    btnAll.style.display = 'none';
-    btnAll.disabled      = true;
+    badge.style.display        = 'none';
+    btnAll.style.display       = 'none';
+    btnAll.disabled            = true;
     btnNewWindow.style.display = 'none';
     btnNewWindow.disabled      = true;
     list.innerHTML = `
@@ -231,20 +261,17 @@ async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
     return;
   }
 
-  badge.style.display  = '';
-  badge.textContent    = matched.length;
-  btnAll.disabled      = _hostOnly;
-  btnAll.style.display = _hostOnly ? 'none' : '';
+  badge.style.display        = '';
+  badge.textContent          = matched.length;
+  btnAll.disabled            = _hostOnly;
+  btnAll.style.display       = _hostOnly ? 'none' : '';
   btnNewWindow.disabled      = _hostOnly;
   btnNewWindow.style.display = _hostOnly ? 'none' : '';
-  list.innerHTML       = '';
+  list.innerHTML             = '';
   matched.forEach((tab, i) => list.appendChild(buildTabRow(tab, i, [makeCloseAction(tab)])));
 }
 
-// ── Main render ──────────────────────────────────────────────
-// tabsPromise: optional — passed from boot() to reuse the initial query.
-// Internal re-renders (after close/move) call render() without argument,
-// which fires a fresh query to get the updated tab list.
+// ── Main render ───────────────────────────────────────────────────────────────
 async function render(tabsPromise) {
   const list         = document.getElementById('closerList');
   const badge        = document.getElementById('closerBadge');
@@ -252,40 +279,32 @@ async function render(tabsPromise) {
   const btnNewWindow = document.getElementById('btnNewWindow');
   const allTabs      = await (tabsPromise ?? chrome.tabs.query({}));
   if (FilterService.hasFilters('closer')) await renderFiltered(allTabs, list, badge, btnAll, btnNewWindow);
-  else                                      await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
+  else                                    await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
 }
 
-// ── Get target tabs ───────────────────────────────────────────
-// Returns [others, active] or null if no targets found.
-// Callers must check for null before destructuring.
+// ── Get target tabs ───────────────────────────────────────────────────────────
 async function getTargetTabs() {
   const allTabs = await chrome.tabs.query({});
   const targets = FilterService.hasFilters('closer')
     ? FilterService.filterTabs('closer', allTabs)
     : allTabs.filter(isHttpTab);
-
   if (!targets.length) return null;
-
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const others      = targets.filter(t => t.id !== activeTab?.id);
   const active      = targets.find(t => t.id === activeTab?.id);
-
   return [others, active];
 }
 
-// ── Close all ────────────────────────────────────────────────
+// ── Close all ────────────────────────────────────────────────────────────────
 async function closeAll() {
   const btn    = document.getElementById('btnCloserCloseAll');
   btn.disabled = true;
-
   const result = await getTargetTabs();
   if (!result) { btn.disabled = false; return; }
-
   const [others, active] = result;
   let closed = 0;
   for (const tab of others) { try { await chrome.tabs.remove(tab.id); closed++; } catch {} }
   if (active) { try { await chrome.tabs.remove(active.id); closed++; } catch {} }
-
   await setActed(closed);
   showToast(`Closed ${closed} tab(s)`);
   await render();
@@ -293,17 +312,15 @@ async function closeAll() {
   btn.disabled = false;
 }
 
+// ── New window ───────────────────────────────────────────────────────────────
 async function newWindow() {
   const btn    = document.getElementById('btnNewWindow');
   btn.disabled = true;
-
   const result = await getTargetTabs();
   if (!result) { btn.disabled = false; return; }
-
   const [others, active] = result;
   const tabs = [...others, ...(active ? [active] : [])];
   await moveToNewWindow(tabs);
-
   await setActed(tabs.length);
   showToast(`Moved ${tabs.length} tab(s)`);
   await render();
@@ -311,7 +328,7 @@ async function newWindow() {
   btn.disabled = false;
 }
 
-// ── Init ─────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 export function init() {
   const hint  = document.getElementById('closerFilterHint');
   const badge = document.getElementById('closerFilterBadge');
@@ -359,11 +376,10 @@ export function init() {
   chrome.tabs.onCreated.addListener(onTabsChanged);
   chrome.tabs.onRemoved.addListener(onTabsChanged);
   chrome.tabs.onUpdated.addListener((_id, changeInfo) => {
-    // Only re-render when the URL changes (new navigation), not on every loading event
     if (changeInfo.url !== undefined) onTabsChanged();
   });
 
-  // Exposed so ui.js buildDupGroup can suppress the external onRemoved
+  // Exposed so buildDupGroup (ui.js) can suppress the external onRemoved
   // that Chrome fires when a tab is closed from within the popup UI.
   suppressNextRemoved = () => {
     _internalCloseCount++;

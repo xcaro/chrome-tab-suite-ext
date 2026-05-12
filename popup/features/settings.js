@@ -15,10 +15,25 @@ async function loadUiMode() {
 }
 
 // ── Theme ─────────────────────────────────────────────────────
+const _darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+let   _systemThemeListener = null;
+
 export function applyTheme(theme) {
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const prefersDark = _darkMq.matches;
   const useDark = theme === 'dark' || (theme === 'system' && prefersDark);
   document.body.classList.toggle('light-mode', !useDark);
+
+  // Wire or unwire the system change listener based on current theme setting
+  if (_systemThemeListener) {
+    _darkMq.removeEventListener('change', _systemThemeListener);
+    _systemThemeListener = null;
+  }
+  if (theme === 'system') {
+    _systemThemeListener = (e) => {
+      document.body.classList.toggle('light-mode', !e.matches);
+    };
+    _darkMq.addEventListener('change', _systemThemeListener);
+  }
 }
 
 async function loadTheme() {

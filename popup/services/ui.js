@@ -44,11 +44,16 @@ export async function setActed(n) {
 // ── Global stats ─────────────────────────────────────────────
 export const GlobalStats = {
   async _update(tabsPromise) {
-    const [allTabs, actedCount] = await Promise.all([
+    const [allTabs, allWindows, actedCount] = await Promise.all([
       tabsPromise,
+      chrome.windows.getAll(),
       StorageService.getActedCount(),
     ]);
     const httpTabs = allTabs.filter(isHttpTab);
+
+    const winEl = document.getElementById('gWindowsOpen');
+    if (winEl) winEl.textContent = allWindows.length;
+
     document.getElementById('gTabsOpen').textContent = httpTabs.length;
 
     const urlMap = new Map();

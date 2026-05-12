@@ -10,6 +10,7 @@ import { StorageService } from '../services/storage.js';
 
 // ── Register features ────────────────────────────────────────
 import './features/dedup.js';
+import './features/badge.js';
 
 // ── Register core message handlers ──────────────────────────
 MessageBus.register('SET_AUTO_DETECT', async () => ({ ok: true }));

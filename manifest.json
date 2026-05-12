@@ -11,7 +11,7 @@
     "sidePanel"
   ],
   "side_panel": {
-    "default_path": "sidepanel.html"
+    "default_path": "panel.html"
   },
   "action": {
     "default_title": "Tab Suite"

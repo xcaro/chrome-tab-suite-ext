@@ -239,6 +239,38 @@ input[type="text"]::placeholder { color: var(--muted); }
 .tag-text .tag-remove { color: #3a6fa8; }
 .tag-text .tag-remove:hover { color: var(--danger); }
 
+/* ─── WINDOW FILTER TAGS ────────────────── */
+.window-tag {
+  cursor: pointer;
+  border-color: hsl(var(--w-hue), 40%, 35%);
+  background: hsl(var(--w-hue), 40%, 14%);
+  color: hsl(var(--w-hue), 60%, 65%);
+  transition: background 0.12s, border-color 0.12s;
+}
+.window-tag:hover {
+  background: hsl(var(--w-hue), 40%, 20%);
+}
+.window-tag-active {
+  border-color: hsl(var(--w-hue), 60%, 50%) !important;
+  background: hsl(var(--w-hue), 45%, 22%) !important;
+  color: hsl(var(--w-hue), 80%, 75%) !important;
+  box-shadow: 0 0 0 1px hsl(var(--w-hue), 50%, 40%);
+}
+body.light-mode .window-tag {
+  border-color: hsl(var(--w-hue), 45%, 70%);
+  background: hsl(var(--w-hue), 55%, 93%);
+  color: hsl(var(--w-hue), 50%, 32%);
+}
+body.light-mode .window-tag:hover {
+  background: hsl(var(--w-hue), 55%, 87%);
+}
+body.light-mode .window-tag-active {
+  border-color: hsl(var(--w-hue), 55%, 45%) !important;
+  background: hsl(var(--w-hue), 55%, 85%) !important;
+  color: hsl(var(--w-hue), 55%, 25%) !important;
+  box-shadow: 0 0 0 1px hsl(var(--w-hue), 50%, 60%);
+}
+
 /* ─── CHECKBOXES ─────────────────────────── */
 .check-list { display: flex; flex-direction: column; gap: 8px; }
 .check-row {
@@ -351,17 +383,14 @@ body.light-mode .toggle.accent input:checked ~ .toggle-thumb { box-shadow: none;
   letter-spacing: 0.08em; text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   user-select: none;
-  /* dark mode: dark tinted bg, light text */
   background: hsl(var(--w-hue), 40%, 18%);
   color: hsl(var(--w-hue), 70%, 72%);
 }
 body.light-mode .window-divider {
-  /* light mode: light tinted bg, dark text */
   background: hsl(var(--w-hue), 55%, 92%);
   color: hsl(var(--w-hue), 50%, 32%);
 }
 
-/* border-left on window block wrapping all rows of the same window */
 .window-block {
   border-left: 2px solid hsl(var(--w-hue), 50%, 45%);
 }
@@ -470,7 +499,6 @@ body.light-mode .window-block {
 }
 .setting-row + .setting-row { margin-top: 12px; }
 
-/* Select dropdown */
 .setting-select {
   flex-shrink: 0;
   background: var(--surface2);
@@ -491,7 +519,6 @@ body.light-mode .window-block {
 .setting-select:focus { border-color: var(--accent); }
 .setting-select option { background: var(--surface2); }
 
-/* Toggle + status label side by side */
 .setting-toggle-wrap {
   display: flex;
   flex-direction: column;
@@ -503,4 +530,57 @@ body.light-mode .window-block {
   margin-top: 0;
   font-size: 9px;
   letter-spacing: 0.04em;
+}
+
+/* ═══════════════════════════════════════════
+   LAYOUT: SIDE PANEL (default — full height)
+   ═══════════════════════════════════════════ */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+.header { padding: 11px 14px 10px; }
+.logo-icon { width: 26px; height: 26px; }
+.header-text h1 { font-size: 15px; }
+.g-stat { padding: 7px 4px; }
+.g-stat-num { font-size: 16px; }
+.section { padding: 11px 14px; }
+input[type="text"] { padding: 8px 8px 8px 28px; }
+.input-wrap { min-width: 0; }
+.icon-btn { flex-shrink: 0; }
+.action-pad { padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; }
+.btn { padding: 9px 14px; }
+.footer-row { padding: 9px 14px; }
+.empty-state { padding: 24px 0; }
+.toast { padding: 10px 14px; }
+.tab-meta-url { max-width: 100%; }
+.dup-tab-list { background: var(--bg); }
+body.light-mode .dup-tab-list { background: var(--surface2); }
+
+/* ═══════════════════════════════════════════
+   LAYOUT: POPUP (≤ 380px fixed width)
+   ═══════════════════════════════════════════ */
+@media (max-width: 360px) {
+  html, body { width: 360px; min-height: 600px; }
+  .header { padding: 12px 14px 11px; }
+  .logo-icon { width: 32px; height: 32px; }
+  .header-text h1 { font-size: 16px; }
+  .g-stat { padding: 8px 4px; }
+  .g-stat-num { font-size: 17px; }
+  .section { padding: 12px 16px; }
+  input[type="text"] { padding: 8px 10px 8px 30px; }
+  .action-pad { padding: 12px 16px; display: flex; flex-direction: column; gap: 7px; }
+  .btn { padding: 10px 14px; }
+  .footer-row { padding: 9px 16px; }
+  .empty-state { padding: 20px 0; }
+  .toast { padding: 10px 16px; }
 }
