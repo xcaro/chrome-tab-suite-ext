@@ -1,0 +1,33 @@
+/* =============================================================
+   layout-mode.css — Panel layout by uiMode
+   Controls whether .panel-actions sits above or below
+   .panel-scroll depending on data-ui-mode on <body>.
+
+   DOM order in panel.html: panel-actions BEFORE panel-scroll.
+   Side panel (default): natural order — actions on top, scroll fills below.
+   Popup: CSS order flips them — scroll on top, actions pinned at bottom.
+   ============================================================= */
+
+/* ── Side panel (default) ───────────────────────────────────── */
+body[data-ui-mode="sidepanel"] .panel-actions {
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Popup ───────────────────────────────────────────────────── */
+body[data-ui-mode="popup"] .panel {
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-ui-mode="popup"] .panel-scroll {
+  order: 1;
+  flex: 1;
+}
+
+body[data-ui-mode="popup"] .panel-actions {
+  order: 2;
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--bg);
+}

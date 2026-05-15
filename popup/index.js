@@ -10,8 +10,11 @@ import { init as initVault    } from './features/vault.js';
 import { init as initDedup    } from './features/dedup.js';
 import { init as initSettings, applyTheme } from './features/settings.js';
 
-// Apply theme immediately to avoid flash of wrong theme
-chrome.storage.sync.get({ theme: 'system' }).then(({ theme }) => applyTheme(theme));
+// Apply theme + uiMode immediately to avoid flash of wrong state
+chrome.storage.sync.get({ theme: 'system', uiMode: 'sidepanel' }).then(({ theme, uiMode }) => {
+  applyTheme(theme);
+  document.body.dataset.uiMode = uiMode;
+});
 
 async function boot() {
   initPanelNav();
