@@ -7,40 +7,55 @@ import { Registry }                        from '../registry.js';
 import { StorageService }                  from '../../services/storage.js';
 import { normalizeUrl, isProcessableUrl }  from '../../shared/url-utils.js';
 
-const STORAGE_KEY      = 'autoDetect';
-const KEEP_NEWEST_KEY  = 'keepNewest';
+const STORAGE_KEY     = 'autoDetect';
+const KEEP_NEWEST_KEY = 'keepNewest';
+
+// ── Settings cache ────────────────────────────────────────────────────────────
+// Read once at init, kept in sync via storage.onChanged.
+// Avoids 2 storage reads on every tab event.
+let _autoDetect = false;
+let _keepNewest = true;
+
+async function loadSettings() {
+  _autoDetect = await StorageService.isEnabled(STORAGE_KEY, false);
+  _keepNewest = await StorageService.isEnabled(KEEP_NEWEST_KEY, true);
+}
+
+function onStorageChanged(changes) {
+  if (STORAGE_KEY     in changes) _autoDetect = changes[STORAGE_KEY].newValue;
+  if (KEEP_NEWEST_KEY in changes) _keepNewest = changes[KEEP_NEWEST_KEY].newValue;
+}
+
+// ── Re-entrant guard ──────────────────────────────────────────────────────────
+// Tracks tab IDs currently being processed so a Chrome-fired onUpdated/onCreated
+// event for a tab we're already closing doesn't trigger a second dedup run.
+const _processing = new Set();
 
 async function checkAndCloseDuplicate(newTabId, newTabUrl) {
+  if (!_autoDetect)                  return;
+  if (!isProcessableUrl(newTabUrl))  return;
+  if (_processing.has(newTabId))     return;
+
+  const norm = normalizeUrl(newTabUrl);
+  if (!norm) return;
+
+  const allTabs    = await chrome.tabs.query({});
+  const duplicates = allTabs.filter(t =>
+    t.id !== newTabId && isProcessableUrl(t.url) && normalizeUrl(t.url) === norm
+  );
+  if (!duplicates.length) return;
+
+  _processing.add(newTabId);
   try {
-    if (!(await StorageService.isEnabled(STORAGE_KEY, false))) return;
-
-    // Hard guard — never attempt any tab operation on non-http URLs
-    if (!isProcessableUrl(newTabUrl)) return;
-
-    const norm = normalizeUrl(newTabUrl);
-    if (!norm) return;
-
-    const allTabs    = await chrome.tabs.query({});
-    const duplicates = allTabs.filter(t =>
-      t.id !== newTabId && isProcessableUrl(t.url) && normalizeUrl(t.url) === norm
-    );
-    if (!duplicates.length) return;
-
-    // Read keep-mode from storage to stay consistent with popup Dedup toggle.
-    // keepNewest=true (default) → keep the newly opened tab, close existing ones.
-    // keepNewest=false          → keep the oldest tab, close the new one.
-    const keepNewest = await StorageService.isEnabled(KEEP_NEWEST_KEY, true);
-
-    if (keepNewest) {
-      // Close existing duplicates, keep the new tab
-      for (const dup of duplicates) {
-        try { await chrome.tabs.remove(dup.id); } catch { /* already closed */ }
-      }
+    if (_keepNewest) {
+      // Close all existing duplicates at once, keep the new tab
+      const ids = duplicates.map(t => t.id);
+      try { await chrome.tabs.remove(ids); } catch { /* some already closed */ }
       try {
         await chrome.tabs.update(newTabId, { active: true });
         const tab = await chrome.tabs.get(newTabId);
         if (tab) await chrome.windows.update(tab.windowId, { focused: true });
-      } catch { /* tab may have been closed */ }
+      } catch { /* new tab may have been closed */ }
     } else {
       // Close the new tab, focus the oldest existing duplicate
       try { await chrome.tabs.remove(newTabId); } catch { /* already closed */ }
@@ -52,8 +67,9 @@ async function checkAndCloseDuplicate(newTabId, newTabUrl) {
         await chrome.windows.update(oldest.windowId, { focused: true });
       } catch { /* tab may have been closed */ }
     }
-
-  } catch { /* silently handle */ }
+  } finally {
+    _processing.delete(newTabId);
+  }
 }
 
 function onUpdated(tabId, changeInfo, tab) {
@@ -62,9 +78,7 @@ function onUpdated(tabId, changeInfo, tab) {
 }
 
 function onCreated(tab) {
-  if (isProcessableUrl(tab.url)) {
-    checkAndCloseDuplicate(tab.id, tab.url);
-  }
+  if (isProcessableUrl(tab.url)) checkAndCloseDuplicate(tab.id, tab.url);
 }
 
 Registry.register({
@@ -73,13 +87,17 @@ Registry.register({
   description:    'Tự động đóng tab trùng khi mở tab mới',
   defaultEnabled: true,
 
-  init() {
+  async init() {
+    await loadSettings();
+    chrome.storage.onChanged.addListener(onStorageChanged);
     chrome.tabs.onUpdated.addListener(onUpdated);
     chrome.tabs.onCreated.addListener(onCreated);
   },
 
   destroy() {
+    chrome.storage.onChanged.removeListener(onStorageChanged);
     chrome.tabs.onUpdated.removeListener(onUpdated);
     chrome.tabs.onCreated.removeListener(onCreated);
+    _processing.clear();
   },
 });

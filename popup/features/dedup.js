@@ -42,8 +42,8 @@ async function scan() {
 }
 
 // ── Render ────────────────────────────────────────────────────
-async function render() {
-  const { allTabs, allGroups, groups } = await scan();
+async function render(cached) {
+  const { allTabs, allGroups, groups } = cached ?? await scan();
   const list     = document.getElementById('dupList');
   const badge    = document.getElementById('dupBadge');
   const btnClose = document.getElementById('btnDedupeClose');
@@ -66,21 +66,19 @@ async function render() {
   btnClose.disabled   = false;
   list.innerHTML      = '';
   groups.forEach(tabs => list.appendChild(buildDupGroup(tabs, {
-      onTabClose: async () => {
-        const list = document.getElementById('dupList');
-        if (!list.children.length) {
-          await render();
-        }
-        await GlobalStats.refresh();
-      },
-      removeGroupWhenSingle: true,
+    onTabClose: async () => {
+      await render();
+      await GlobalStats.refresh();
+    },
+    removeGroupWhenSingle: true,
   })));
   await GlobalStats.refresh();
 }
 
 // ── Close all ─────────────────────────────────────────────────
 async function closeAll() {
-  const { groups } = await scan();
+  const scanned = await scan();
+  const { groups } = scanned;
   if (!groups.length) return;
 
   const toClose = groups.flatMap(tabs =>
@@ -94,7 +92,7 @@ async function closeAll() {
 
   await setActed(toClose.length);
   showToast(`Closed ${toClose.length} duplicate tab(s)`);
-  await render();
+  await render();   // fresh scan needed — tabs have changed
   await GlobalStats.refresh();
 }
 
@@ -140,7 +138,7 @@ export function init() {
   document.getElementById('btnDedupeScan').addEventListener('click', () => {
     const btn = document.getElementById('btnDedupeScan');
     btn.textContent = '↻ Scanning...';
-    render().then(() => { btn.innerHTML = '<span>↻</span> Rescan'; });
+    render().then(() => { btn.textContent = '↻ Rescan'; });
   });
 
   const keepToggle = document.getElementById('keepModeToggle');
