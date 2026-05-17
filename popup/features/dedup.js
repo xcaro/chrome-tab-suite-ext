@@ -14,7 +14,6 @@ import { StorageService } from '../../services/storage.js';
 
 // ── State ────────────────────────────────────────────────────
 const _filters    = FilterService.register('dedup');
-let   _domainFilter;
 let   _keepNewest = true;
 
 // ── Scan ─────────────────────────────────────────────────────
@@ -121,7 +120,7 @@ async function loadKeepMode() {
 
 // ── Init ─────────────────────────────────────────────────────
 export function init() {
-  _domainFilter = createDomainFilter({
+  createDomainFilter({
     tagsEl:   document.getElementById('dedupDomainTags'),
     inputEl:  document.getElementById('dedupDomainInput'),
     addBtn:   document.getElementById('dedupAddDomainBtn'),

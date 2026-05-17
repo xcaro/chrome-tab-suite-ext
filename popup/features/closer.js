@@ -14,7 +14,6 @@ import {
 // ── State ────────────────────────────────────────────────────────────────────
 const _filters         = FilterService.register('closer');
 let   _hostOnly        = false;
-let   _domainFilter;
 let   _selectedWindows = new Set();
 
 export let suppressNextRemoved = () => {};
@@ -292,7 +291,7 @@ export function init() {
   const badge = document.getElementById('closerFilterBadge');
   const label = document.getElementById('closerListLabel');
 
-  _domainFilter = createDomainFilter({
+  createDomainFilter({
     tagsEl:  document.getElementById('closerDomainTags'),
     inputEl: document.getElementById('closerDomainInput'),
     addBtn:  document.getElementById('closerAddDomainBtn'),

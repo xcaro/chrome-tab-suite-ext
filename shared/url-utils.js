@@ -117,7 +117,7 @@ function _getRootDomain(h) {
     }
   }
   if (!root) root = parts.length >= 2 ? parts.slice(-2).join('.') : h;
-  if (_rootDomainCache.size >= _ROOT_DOMAIN_CACHE_MAX) _rootDomainCache.clear();
+  if (_rootDomainCache.size >= _ROOT_DOMAIN_CACHE_MAX) _rootDomainCache.delete(_rootDomainCache.keys().next().value);
   _rootDomainCache.set(h, root);
   return root;
 }

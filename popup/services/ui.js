@@ -10,8 +10,12 @@ import { StorageService } from '../../services/storage.js';
 const WINDOW_HUES = [212, 28, 158, 280, 48, 340, 185, 95, 320, 8];
 
 export function windowHueForId(windowNames, windowId) {
-  const idx = [...windowNames.keys()].indexOf(windowId) % WINDOW_HUES.length;
-  return WINDOW_HUES[Math.max(0, idx)];
+  let idx = 0;
+  for (const id of windowNames.keys()) {
+    if (id === windowId) break;
+    idx++;
+  }
+  return WINDOW_HUES[idx % WINDOW_HUES.length];
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -34,7 +38,8 @@ export async function focusTab(tab) {
 
 // ── Acted count ───────────────────────────────────────────────────────────────
 export async function setActed(n) {
-  await StorageService.setActedCount(n);
+  const prev = await StorageService.getActedCount();
+  await StorageService.setActedCount(prev + n);
 }
 
 // ── Toggle label ──────────────────────────────────────────────────────────────
@@ -55,8 +60,8 @@ function _initWindowCountCache() {
 
 export const GlobalStats = {
   async _update(tabsPromise) {
-    const [allTabs] = await Promise.all([tabsPromise, StorageService.getActedCount()]);
-    const httpTabs  = allTabs.filter(isHttpTab);
+    const allTabs = await tabsPromise;
+    const httpTabs = allTabs.filter(isHttpTab);
 
     const winEl = document.getElementById('gWindowsOpen');
     if (winEl) winEl.textContent = _cachedWindowCount;

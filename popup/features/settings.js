@@ -7,11 +7,14 @@
 import { StorageService } from '../../services/storage.js';
 import { showToast, setToggleLabel } from '../services/ui.js';
 
-// ── UI Mode ───────────────────────────────────────────────────
-async function loadUiMode() {
-  const { uiMode = 'sidepanel' } = await chrome.storage.sync.get('uiMode');
-  const select = document.getElementById('settingsUiMode');
-  if (select) select.value = uiMode;
+// ── UI Mode + Theme ───────────────────────────────────────────
+async function loadSettings() {
+  const { uiMode = 'sidepanel', theme = 'system' } = await chrome.storage.sync.get(['uiMode', 'theme']);
+  const uiModeSelect = document.getElementById('settingsUiMode');
+  if (uiModeSelect) uiModeSelect.value = uiMode;
+  const themeSelect = document.getElementById('settingsTheme');
+  if (themeSelect) themeSelect.value = theme;
+  applyTheme(theme);
 }
 
 // ── Theme ─────────────────────────────────────────────────────
@@ -34,13 +37,6 @@ export function applyTheme(theme) {
     };
     _darkMq.addEventListener('change', _systemThemeListener);
   }
-}
-
-async function loadTheme() {
-  const { theme = 'system' } = await chrome.storage.sync.get('theme');
-  const select = document.getElementById('settingsTheme');
-  if (select) select.value = theme;
-  applyTheme(theme);
 }
 
 // ── Auto-detect ───────────────────────────────────────────────
@@ -85,7 +81,6 @@ export function init() {
     });
   }
 
-  loadUiMode();
-  loadTheme();
+  loadSettings();
   loadAutoDetect();
 }

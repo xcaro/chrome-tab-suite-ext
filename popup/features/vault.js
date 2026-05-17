@@ -81,10 +81,7 @@ async function saveTabs(tabs, titles, parentId, { grouped }) {
   const tick = () => setProgress(50 + Math.round((++done / total) * 45));
 
   if (!grouped) {
-    for (let i = 0; i < tabs.length; i++) {
-      await chrome.bookmarks.create({ parentId, title: titles[i], url: tabs[i].url });
-      tick();
-    }
+    await Promise.all(tabs.map((tab, i) => chrome.bookmarks.create({ parentId, title: titles[i], url: tab.url }).then(tick)));
     return;
   }
 
@@ -107,15 +104,14 @@ async function saveTabs(tabs, titles, parentId, { grouped }) {
     const keys = [...sm.keys()].sort((a, b) =>
       a === '_direct' ? -1 : b === '_direct' ? 1 : a.localeCompare(b)
     );
-    for (const key of keys) {
+    await Promise.all(keys.map(async key => {
       const items  = sm.get(key);
       const target = key === '_direct' ? rf.id
         : (await chrome.bookmarks.create({ parentId: rf.id, title: key })).id;
-      for (const { tab, title } of items) {
-        await chrome.bookmarks.create({ parentId: target, title, url: tab.url });
-        tick();
-      }
-    }
+      await Promise.all(items.map(({ tab, title }) =>
+        chrome.bookmarks.create({ parentId: target, title, url: tab.url }).then(tick)
+      ));
+    }));
   }
 }
 
@@ -159,8 +155,10 @@ async function save() {
 
     if (closeTabs) {
       const cur = (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
-      const ids = tabs.map(t => t.id).filter(id => id !== cur?.id);
-      if (ids.length) await chrome.tabs.remove(ids);
+      const toClose = tabs.map(t => t.id).filter(id => id !== cur?.id);
+      const skipped = tabs.length - toClose.length;
+      if (toClose.length) await chrome.tabs.remove(toClose);
+      if (skipped) showToast(`Saved ${tabs.length} tabs — 1 tab kept open (active)`, 'info');
     }
 
     await setActed(tabs.length);
@@ -182,7 +180,7 @@ async function save() {
 export function init() {
   document.getElementById('folderName').value = formatDate();
 
-  _domainFilter = createDomainFilter({
+  createDomainFilter({
     tagsEl:   document.getElementById('vaultDomainTags'),
     inputEl:  document.getElementById('vaultDomainInput'),
     addBtn:   document.getElementById('vaultAddDomainBtn'),
