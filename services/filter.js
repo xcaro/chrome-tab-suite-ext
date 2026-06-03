@@ -2,22 +2,36 @@
 // services/filter.js — FilterService
 // Shared domain/URL filtering logic used by all features.
 // Each feature registers its own namespace via register(featureId)
-// which returns a mutable filters array the panel owns directly.
-// Features call FilterService.filterTabs() instead of re-implementing
-// filter logic inline.
+// which returns a filter state object owned by that feature.
+// Features call the returned state object instead of re-implementing
+// filter logic inline or passing magic feature IDs around.
 // =============================================================
 
 import { matchesDomainFilter, normalizeUrl, isHttpTab } from '../shared/url-utils.js';
 
-const _rules = new Map();  // featureId → { filters: [], excludedUrls: Set }
+const _rules = new Map();  // featureId → filter state
 
 export const FilterService = {
 
-  // Register a namespace — returns the mutable filters array for the panel to own
+  // Register a namespace and return a small state object for the feature to own.
   register(featureId) {
     const filters = [];
-    _rules.set(featureId, { filters, excludedUrls: new Set() });
-    return filters;
+    const state = {
+      id: featureId,
+      filters,
+      excludedUrls: new Set(),
+      shouldProcess(url) {
+        return FilterService.shouldProcess(featureId, url);
+      },
+      filterTabs(tabs) {
+        return FilterService.filterTabs(featureId, tabs);
+      },
+      hasFilters() {
+        return FilterService.hasFilters(featureId);
+      },
+    };
+    _rules.set(featureId, state);
+    return state;
   },
 
   // Full pipeline: isHttp → normalize → not excluded → passes domain filter

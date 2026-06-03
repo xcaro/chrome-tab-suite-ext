@@ -14,7 +14,7 @@ import { StorageService } from '../../services/storage.js';
 import { TabsService } from '../../services/tabs.js';
 
 // ── State ────────────────────────────────────────────────────
-const _filters    = FilterService.register('dedup');
+const _filter     = FilterService.register('dedup');
 let   _keepNewest = true;
 
 // ── Scan ─────────────────────────────────────────────────────
@@ -22,8 +22,8 @@ async function scan() {
   const allTabs = await TabsService.all();
   const allGroups = getDuplicateGroups(allTabs);
 
-  const groups = FilterService.hasFilters('dedup')
-    ? allGroups.filter(tabs => FilterService.shouldProcess('dedup', tabs[0].url))
+  const groups = _filter.hasFilters()
+    ? allGroups.filter(tabs => _filter.shouldProcess(tabs[0].url))
     : allGroups;
 
   return { allTabs, allGroups, groups };
@@ -39,7 +39,7 @@ async function render(cached) {
   if (!groups.length) {
     badge.style.display = 'none';
     btnClose.disabled   = true;
-    const msg = FilterService.hasFilters('dedup') ? 'No duplicates in filtered domains' : 'No duplicate tabs!';
+    const msg = _filter.hasFilters() ? 'No duplicates in filtered domains' : 'No duplicate tabs!';
     list.innerHTML = `
       <div class="empty-state">
         <div class="e-icon">✓</div>
@@ -109,10 +109,10 @@ export function init() {
     tagsEl:   document.getElementById('dedupDomainTags'),
     inputEl:  document.getElementById('dedupDomainInput'),
     addBtn:   document.getElementById('dedupAddDomainBtn'),
-    filters:  _filters,
+    filterState: _filter,
     onChange: () => {
-      document.getElementById('dedupFilterHint').style.display  = FilterService.hasFilters('dedup') ? '' : 'none';
-      document.getElementById('dedupFilterBadge').style.display = FilterService.hasFilters('dedup') ? '' : 'none';
+      document.getElementById('dedupFilterHint').style.display  = _filter.hasFilters() ? '' : 'none';
+      document.getElementById('dedupFilterBadge').style.display = _filter.hasFilters() ? '' : 'none';
       render();
     },
   });

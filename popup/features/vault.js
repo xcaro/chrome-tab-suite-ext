@@ -13,8 +13,7 @@ import {
 import { TabsService } from '../../services/tabs.js';
 
 // ── State ────────────────────────────────────────────────────
-const _filters = FilterService.register('vault');
-let   _domainFilter;
+const _filter = FilterService.register('vault');
 
 // ── Helpers ──────────────────────────────────────────────────
 function formatDate(d = new Date()) {
@@ -31,8 +30,8 @@ function capitalizeDomain(domain) {
 
 function updateFolderName() {
   const inp     = document.getElementById('folderName');
-  const domains = _filters.filter(_isDomainToken);
-  if (domains.length === 1 && _filters.length === 1) {
+  const domains = _filter.filters.filter(_isDomainToken);
+  if (domains.length === 1 && _filter.filters.length === 1) {
     inp.value = capitalizeDomain(domains[0]);
   } else {
     inp.value = formatDate();
@@ -46,12 +45,12 @@ async function renderMatchList() {
   const badge   = document.getElementById('vaultMatchBadge');
   const onBadge = document.getElementById('vaultFilterBadge');
 
-  onBadge.style.display = FilterService.hasFilters('vault') ? '' : 'none';
+  onBadge.style.display = _filter.hasFilters() ? '' : 'none';
 
-  if (!FilterService.hasFilters('vault')) { section.style.display = 'none'; return; }
+  if (!_filter.hasFilters()) { section.style.display = 'none'; return; }
 
   const allTabs = await TabsService.all();
-  const matched = FilterService.filterTabs('vault', allTabs);
+  const matched = _filter.filterTabs(allTabs);
 
   section.style.display = '';
   badge.textContent     = matched.length;
@@ -132,7 +131,7 @@ async function save() {
     let tabs = await TabsService.all();
     if (skipPinned) tabs = tabs.filter(t => !t.pinned);
     tabs = tabs.filter(isHttpTab);
-    if (FilterService.hasFilters('vault')) tabs = FilterService.filterTabs('vault', tabs);
+    if (_filter.hasFilters()) tabs = _filter.filterTabs(tabs);
     if (skipDupes) {
       const seen = new Set();
       tabs = tabs.filter(t => {
@@ -147,7 +146,7 @@ async function save() {
     setProgress(40);
 
     const root    = await chrome.bookmarks.create({ parentId: '1', title: folderName });
-    const grouped = !FilterService.hasFilters('vault');
+    const grouped = !_filter.hasFilters();
     setProgress(50);
 
     await saveTabs(tabs, titles, root.id, { grouped });
@@ -164,7 +163,7 @@ async function save() {
 
     await setActed(tabs.length);
     await GlobalStats.refresh();
-    const note = FilterService.hasFilters('vault') ? ` (${_filters.join(', ')})` : '';
+    const note = _filter.hasFilters() ? ` (${_filter.filters.join(', ')})` : '';
     showToast(`Saved ${tabs.length} tabs to "${folderName}"${note}`);
     setTimeout(() => setProgress(0), 1500);
 
@@ -185,7 +184,7 @@ export function init() {
     tagsEl:   document.getElementById('vaultDomainTags'),
     inputEl:  document.getElementById('vaultDomainInput'),
     addBtn:   document.getElementById('vaultAddDomainBtn'),
-    filters:  _filters,
+    filterState: _filter,
     onChange: () => { updateFolderName(); renderMatchList(); },
   });
 

@@ -13,7 +13,7 @@ import {
 import { TabsService } from '../../services/tabs.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
-const _filters         = FilterService.register('closer');
+const _filter          = FilterService.register('closer');
 let   _hostOnly        = false;
 let   _selectedWindows = new Set();
 
@@ -94,7 +94,7 @@ function setEmptyState(list, badge, btnAll, btnNewWindow, message) {
     <div class="empty-state">
       <div class="e-icon">✓</div>
       <div class="e-title">${message}</div>
-      <div>${FilterService.hasFilters('closer') ? 'No open tabs match the current filter' : 'No tabs are currently open'}</div>
+    <div>${_filter.hasFilters() ? 'No open tabs match the current filter' : 'No tabs are currently open'}</div>
     </div>`;
 }
 
@@ -177,7 +177,7 @@ function buildGroupHeader(root, tabs, group) {
 
 // ── Render modes ──────────────────────────────────────────────────────────────
 async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
-  const httpTabs = FilterService.filterTabs('closer', allTabs)
+  const httpTabs = _filter.filterTabs(allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
   if (!httpTabs.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No open tabs');
@@ -228,7 +228,7 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
 }
 
 async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
-  const matched = FilterService.filterTabs('closer', allTabs)
+  const matched = _filter.filterTabs(allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
   if (!matched.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No matching tabs');
@@ -247,15 +247,15 @@ async function render(tabsPromise) {
   const btnAll       = document.getElementById('btnCloserCloseAll');
   const btnNewWindow = document.getElementById('btnNewWindow');
   const allTabs      = await (tabsPromise ?? TabsService.all());
-  if (FilterService.hasFilters('closer')) await renderFiltered(allTabs, list, badge, btnAll, btnNewWindow);
+  if (_filter.hasFilters()) await renderFiltered(allTabs, list, badge, btnAll, btnNewWindow);
   else                                    await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function getTargetTabs() {
   const allTabs = await TabsService.all();
-  const targets = FilterService.hasFilters('closer')
-    ? FilterService.filterTabs('closer', allTabs)
+  const targets = _filter.hasFilters()
+    ? _filter.filterTabs(allTabs)
     : allTabs.filter(isHttpTab);
   return targets.length ? targets : null;
 }
@@ -294,9 +294,9 @@ export function init() {
     tagsEl:  document.getElementById('closerDomainTags'),
     inputEl: document.getElementById('closerDomainInput'),
     addBtn:  document.getElementById('closerAddDomainBtn'),
-    filters: _filters,
+    filterState: _filter,
     onChange: () => {
-      const hasFilter = FilterService.hasFilters('closer');
+      const hasFilter = _filter.hasFilters();
       hint.style.display  = hasFilter ? '' : 'none';
       badge.style.display = hasFilter ? '' : 'none';
       if (label) label.textContent = hasFilter ? 'Matched tabs' : 'All tabs';

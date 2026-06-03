@@ -109,7 +109,7 @@ export function initPanelNav() {
 }
 
 // ── Domain filter ─────────────────────────────────────────────────────────────
-export function createDomainFilter({ tagsEl, inputEl, addBtn, filters, onChange }) {
+export function createDomainFilter({ tagsEl, inputEl, addBtn, filterState, filters = filterState?.filters ?? [], onChange }) {
   function renderTags() {
     tagsEl.innerHTML = '';
     filters.forEach((d, i) => {
