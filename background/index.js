@@ -7,14 +7,15 @@
 import { Registry }       from './registry.js';
 import { MessageBus }     from './message-bus.js';
 import { StorageService } from '../services/storage.js';
+import { MessageType }    from '../shared/messages.js';
 
 // ── Register features ────────────────────────────────────────
 import './features/dedup.js';
 import './features/badge.js';
 
 // ── Register core message handlers ──────────────────────────
-MessageBus.register('SET_AUTO_DETECT', async () => ({ ok: true }));
-MessageBus.register('GET_FEATURES',    async () => ({ features: Registry.getAll() }));
+MessageBus.register(MessageType.SetAutoDetect, async () => ({ ok: true }));
+MessageBus.register(MessageType.GetFeatures,   async () => ({ features: Registry.getAll() }));
 
 // ── Boot ─────────────────────────────────────────────────────
 MessageBus.listen();
