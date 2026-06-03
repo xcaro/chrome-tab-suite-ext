@@ -11,6 +11,7 @@ import {
   PanelHooks, createDomainFilter, buildDupGroup,
 } from '../services/ui.js';
 import { StorageService } from '../../services/storage.js';
+import { TabsService } from '../../services/tabs.js';
 
 // ── State ────────────────────────────────────────────────────
 const _filters    = FilterService.register('dedup');
@@ -18,7 +19,7 @@ let   _keepNewest = true;
 
 // ── Scan ─────────────────────────────────────────────────────
 async function scan() {
-  const allTabs = await chrome.tabs.query({});
+  const allTabs = await TabsService.all();
   const allGroups = getDuplicateGroups(allTabs);
 
   const groups = FilterService.hasFilters('dedup')
@@ -71,7 +72,7 @@ async function closeAll() {
   const toClose = getDuplicateTabIdsToClose(groups, { keepNewest: _keepNewest });
   if (!toClose.length) return;
 
-  try { await chrome.tabs.remove(toClose); } catch { /* some already closed */ }
+  await TabsService.closeBestEffort(toClose);
 
   await setActed(toClose.length);
   showToast(`Closed ${toClose.length} duplicate tab(s)`);

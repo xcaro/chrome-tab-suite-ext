@@ -6,13 +6,14 @@
 
 import { Registry }          from '../registry.js';
 import { countDuplicateGroups } from '../../shared/dedup-core.js';
+import { TabsService } from '../../services/tabs.js';
 
 const BADGE_COLOR = '#E0462A';
 
 // Count URL groups that have 2+ tabs → number of "duplicate groups"
 async function updateBadge() {
   try {
-    const allTabs = await chrome.tabs.query({});
+    const allTabs = await TabsService.all();
     const dupGroups = countDuplicateGroups(allTabs);
 
     if (dupGroups > 0) {

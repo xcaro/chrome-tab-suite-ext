@@ -10,6 +10,7 @@ import {
   PanelHooks, createDomainFilter,
   buildTabRow, buildDupGroup, windowHueForId,
 } from '../services/ui.js';
+import { TabsService } from '../../services/tabs.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 const _filters         = FilterService.register('closer');
@@ -35,10 +36,7 @@ async function withDisabled(btnId, fn) {
 
 async function moveToNewWindow(tabs) {
   try {
-    const sorted = [...tabs].sort((a, b) => a.index - b.index);
-    const newWin = await chrome.windows.create({ tabId: sorted[0].id, focused: false });
-    await chrome.tabs.move(sorted.slice(1).map(t => t.id), { windowId: newWin.id, index: -1 });
-    return newWin.id;
+    return await TabsService.moveToNewWindow(tabs);
   } catch (err) {
     showToast('Could not move tabs: ' + err.message, 'error');
     return null;
@@ -131,7 +129,8 @@ function makeCloseAction(tab) {
   return {
     label: '✕', className: 'close-tab-btn', title: 'Close this tab',
     onClick: async () => {
-      try { await chrome.tabs.remove(tab.id); await setActed(1); } catch { /* already closed */ }
+      await TabsService.closeBestEffort(tab.id);
+      await setActed(1);
       await render();
       await GlobalStats.refresh();
     },
@@ -163,12 +162,12 @@ function buildGroupHeader(root, tabs, group) {
   btn.title = `Close all "${root}" tabs`;
   btn.addEventListener('click', async e => {
     e.stopPropagation();
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const activeTab = await TabsService.activeInCurrentWindow();
     const toClose = tabs
       .filter(t => t.id !== activeTab?.id)
       .map(t => t.id)
       .concat(tabs.find(t => t.id === activeTab?.id)?.id ?? []);
-    try { await chrome.tabs.remove(toClose); } catch { /* some already closed */ }
+    await TabsService.closeBestEffort(toClose);
     await setActed(toClose.length);
     showToast(`Closed ${toClose.length} "${root}" tab(s)`);
     await render(); await GlobalStats.refresh();
@@ -247,14 +246,14 @@ async function render(tabsPromise) {
   const badge        = document.getElementById('closerBadge');
   const btnAll       = document.getElementById('btnCloserCloseAll');
   const btnNewWindow = document.getElementById('btnNewWindow');
-  const allTabs      = await (tabsPromise ?? chrome.tabs.query({}));
+  const allTabs      = await (tabsPromise ?? TabsService.all());
   if (FilterService.hasFilters('closer')) await renderFiltered(allTabs, list, badge, btnAll, btnNewWindow);
   else                                    await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function getTargetTabs() {
-  const allTabs = await chrome.tabs.query({});
+  const allTabs = await TabsService.all();
   const targets = FilterService.hasFilters('closer')
     ? FilterService.filterTabs('closer', allTabs)
     : allTabs.filter(isHttpTab);
@@ -265,7 +264,7 @@ async function closeAll() {
   await withDisabled('btnCloserCloseAll', async () => {
     const tabs = await getTargetTabs();
     if (!tabs) return;
-    try { await chrome.tabs.remove(tabs.map(t => t.id)); } catch { /* some already closed */ }
+    await TabsService.closeBestEffort(tabs.map(t => t.id));
     await setActed(tabs.length);
     showToast(`Closed ${tabs.length} tab(s)`);
     await render();

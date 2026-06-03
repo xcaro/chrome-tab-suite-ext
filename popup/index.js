@@ -6,6 +6,7 @@
 
 import { GlobalStats, PanelHooks, initPanelNav } from './services/ui.js';
 import { StorageService } from '../services/storage.js';
+import { TabsService } from '../services/tabs.js';
 import { init as initCloser   } from './features/closer.js';
 import { init as initVault    } from './features/vault.js';
 import { init as initDedup    } from './features/dedup.js';
@@ -27,7 +28,7 @@ async function boot() {
 
   // Single tabs.query shared by both stats and first render — no redundant call.
   // Both run concurrently: popup content appears immediately without waiting for stats.
-  const tabsPromise = chrome.tabs.query({});
+  const tabsPromise = TabsService.all();
   await Promise.all([
     GlobalStats.initWithTabs(tabsPromise),
     PanelHooks['closer']?.(tabsPromise),

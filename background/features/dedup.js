@@ -5,6 +5,7 @@
 
 import { Registry }                        from '../registry.js';
 import { StorageService }                  from '../../services/storage.js';
+import { TabsService }                     from '../../services/tabs.js';
 import { isProcessableUrl }                from '../../shared/url-utils.js';
 import { getDuplicateTabsForUrl }          from '../../shared/dedup-core.js';
 
@@ -37,7 +38,7 @@ async function checkAndCloseDuplicate(newTabId, newTabUrl) {
   if (!isProcessableUrl(newTabUrl))  return;
   if (_processing.has(newTabId))     return;
 
-  const allTabs    = await chrome.tabs.query({});
+  const allTabs    = await TabsService.all();
   const duplicates = getDuplicateTabsForUrl(allTabs, newTabId, newTabUrl);
   if (!duplicates.length) return;
 
@@ -45,23 +46,15 @@ async function checkAndCloseDuplicate(newTabId, newTabUrl) {
   try {
     if (_keepNewest) {
       // Close all existing duplicates at once, keep the new tab
-      const ids = duplicates.map(t => t.id);
-      try { await chrome.tabs.remove(ids); } catch { /* some already closed */ }
-      try {
-        await chrome.tabs.update(newTabId, { active: true });
-        const tab = await chrome.tabs.get(newTabId);
-        if (tab) await chrome.windows.update(tab.windowId, { focused: true });
-      } catch { /* new tab may have been closed */ }
+      await TabsService.closeBestEffort(duplicates.map(t => t.id));
+      try { await TabsService.focus(newTabId); } catch { /* new tab may have been closed */ }
     } else {
       // Close the new tab, focus the oldest existing duplicate
-      try { await chrome.tabs.remove(newTabId); } catch { /* already closed */ }
+      await TabsService.closeBestEffort(newTabId);
       const oldest = duplicates.reduce((a, b) =>
         (a.lastAccessed || 0) <= (b.lastAccessed || 0) ? a : b
       );
-      try {
-        await chrome.tabs.update(oldest.id, { active: true });
-        await chrome.windows.update(oldest.windowId, { focused: true });
-      } catch { /* tab may have been closed */ }
+      try { await TabsService.focus(oldest); } catch { /* tab may have been closed */ }
     }
   } finally {
     _processing.delete(newTabId);

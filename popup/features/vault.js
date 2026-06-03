@@ -10,6 +10,7 @@ import {
   showToast, setActed, GlobalStats,
   createDomainFilter, buildTabRow,
 } from '../services/ui.js';
+import { TabsService } from '../../services/tabs.js';
 
 // ── State ────────────────────────────────────────────────────
 const _filters = FilterService.register('vault');
@@ -49,7 +50,7 @@ async function renderMatchList() {
 
   if (!FilterService.hasFilters('vault')) { section.style.display = 'none'; return; }
 
-  const allTabs = await chrome.tabs.query({});
+  const allTabs = await TabsService.all();
   const matched = FilterService.filterTabs('vault', allTabs);
 
   section.style.display = '';
@@ -128,7 +129,7 @@ async function save() {
   setProgress(10);
 
   try {
-    let tabs = await chrome.tabs.query({});
+    let tabs = await TabsService.all();
     if (skipPinned) tabs = tabs.filter(t => !t.pinned);
     tabs = tabs.filter(isHttpTab);
     if (FilterService.hasFilters('vault')) tabs = FilterService.filterTabs('vault', tabs);
@@ -154,10 +155,10 @@ async function save() {
     setProgress(100);
 
     if (closeTabs) {
-      const cur = (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+      const cur = await TabsService.activeInCurrentWindow();
       const toClose = tabs.map(t => t.id).filter(id => id !== cur?.id);
       const skipped = tabs.length - toClose.length;
-      if (toClose.length) await chrome.tabs.remove(toClose);
+      if (toClose.length) await TabsService.close(toClose);
       if (skipped) showToast(`Saved ${tabs.length} tabs — 1 tab kept open (active)`, 'info');
     }
 

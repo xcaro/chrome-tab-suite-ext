@@ -5,6 +5,7 @@
 
 import { isHttpTab, normalizeUrl, _isDomainToken, normDomain } from '../../shared/url-utils.js';
 import { StorageService } from '../../services/storage.js';
+import { TabsService } from '../../services/tabs.js';
 
 // ── Window color palette ──────────────────────────────────────────────────────
 const WINDOW_HUES = [212, 28, 158, 280, 48, 340, 185, 95, 320, 8];
@@ -32,8 +33,7 @@ export function showToast(msg, type = 'success') {
 
 // ── Tab focus ─────────────────────────────────────────────────────────────────
 export async function focusTab(tab) {
-  await chrome.tabs.update(tab.id, { active: true });
-  await chrome.windows.update(tab.windowId, { focused: true });
+  await TabsService.focus(tab);
 }
 
 // ── Acted count ───────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ export const GlobalStats = {
   },
 
   // Called after user actions when tabs have changed.
-  refresh() { return this._update(chrome.tabs.query({})); },
+  refresh() { return this._update(TabsService.all()); },
 };
 
 // ── Panel nav ─────────────────────────────────────────────────────────────────
@@ -259,7 +259,7 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
         onClick: async () => {
           try {
             onInternalClose?.();
-            await chrome.tabs.remove(tab.id);
+            await TabsService.close(tab.id);
             await setActed(1);
           } catch { /* already closed */ }
           tabCount--;
