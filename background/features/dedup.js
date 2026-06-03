@@ -5,7 +5,8 @@
 
 import { Registry }                        from '../registry.js';
 import { StorageService }                  from '../../services/storage.js';
-import { normalizeUrl, isProcessableUrl }  from '../../shared/url-utils.js';
+import { isProcessableUrl }                from '../../shared/url-utils.js';
+import { getDuplicateTabsForUrl }          from '../../shared/dedup-core.js';
 
 const STORAGE_KEY     = 'autoDetect';
 const KEEP_NEWEST_KEY = 'keepNewest';
@@ -36,13 +37,8 @@ async function checkAndCloseDuplicate(newTabId, newTabUrl) {
   if (!isProcessableUrl(newTabUrl))  return;
   if (_processing.has(newTabId))     return;
 
-  const norm = normalizeUrl(newTabUrl);
-  if (!norm) return;
-
   const allTabs    = await chrome.tabs.query({});
-  const duplicates = allTabs.filter(t =>
-    t.id !== newTabId && isProcessableUrl(t.url) && normalizeUrl(t.url) === norm
-  );
+  const duplicates = getDuplicateTabsForUrl(allTabs, newTabId, newTabUrl);
   if (!duplicates.length) return;
 
   _processing.add(newTabId);

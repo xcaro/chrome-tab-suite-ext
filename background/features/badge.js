@@ -5,7 +5,7 @@
 // =============================================================
 
 import { Registry }          from '../registry.js';
-import { normalizeUrl, isProcessableUrl } from '../../shared/url-utils.js';
+import { countDuplicateGroups } from '../../shared/dedup-core.js';
 
 const BADGE_COLOR = '#E0462A';
 
@@ -13,16 +13,7 @@ const BADGE_COLOR = '#E0462A';
 async function updateBadge() {
   try {
     const allTabs = await chrome.tabs.query({});
-    const counts  = new Map();
-
-    for (const tab of allTabs) {
-      if (!isProcessableUrl(tab.url)) continue;
-      const norm = normalizeUrl(tab.url);
-      if (!norm) continue;
-      counts.set(norm, (counts.get(norm) ?? 0) + 1);
-    }
-
-    const dupGroups = [...counts.values()].filter(n => n >= 2).length;
+    const dupGroups = countDuplicateGroups(allTabs);
 
     if (dupGroups > 0) {
       await chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });

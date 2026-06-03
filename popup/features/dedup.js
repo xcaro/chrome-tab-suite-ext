@@ -4,7 +4,7 @@
 // Note: auto-detect setting is owned by settings.js
 // =============================================================
 
-import { normalizeUrl } from '../../shared/url-utils.js';
+import { getDuplicateGroups, getDuplicateTabIdsToClose } from '../../shared/dedup-core.js';
 import { FilterService } from '../../services/filter.js';
 import {
   showToast, setActed, GlobalStats, setToggleLabel,
@@ -19,19 +19,7 @@ let   _keepNewest = true;
 // ── Scan ─────────────────────────────────────────────────────
 async function scan() {
   const allTabs = await chrome.tabs.query({});
-  const urlMap  = new Map();
-
-  for (const tab of allTabs) {
-    const norm = normalizeUrl(tab.url);
-    if (!norm) continue;
-    if (!urlMap.has(norm)) urlMap.set(norm, []);
-    urlMap.get(norm).push(tab);
-  }
-
-  const allGroups = [];
-  for (const tabs of urlMap.values()) {
-    if (tabs.length > 1) allGroups.push(tabs);
-  }
+  const allGroups = getDuplicateGroups(allTabs);
 
   const groups = FilterService.hasFilters('dedup')
     ? allGroups.filter(tabs => FilterService.shouldProcess('dedup', tabs[0].url))
@@ -80,11 +68,7 @@ async function closeAll() {
   const { groups } = scanned;
   if (!groups.length) return;
 
-  const toClose = groups.flatMap(tabs =>
-    _keepNewest
-      ? tabs.slice(0, -1).map(t => t.id)
-      : tabs.slice(1).map(t => t.id)
-  );
+  const toClose = getDuplicateTabIdsToClose(groups, { keepNewest: _keepNewest });
   if (!toClose.length) return;
 
   try { await chrome.tabs.remove(toClose); } catch { /* some already closed */ }
