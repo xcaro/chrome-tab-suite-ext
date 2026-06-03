@@ -4,20 +4,6 @@
 
 const _NOTE_PREFIX = /^[\(\[•]\s*\d+\s*[\)\]•]?\s*/;
 
-async function fetchTitleFromTab(tabId) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab?.url || /^(chrome|chrome-extension|about|edge|moz-extension):/.test(tab.url)) {
-      return null;
-    }
-    const r = await chrome.scripting.executeScript({
-      target: { tabId },
-      func:   () => document.title,
-    });
-    return r?.[0]?.result?.trim() || null;
-  } catch { return null; }
-}
-
 const _GENERIC_SITES = [
   'Reddit','TikTok','Pinterest','Medium','Wikipedia','Notion','Figma',
   'Vercel','Netlify','Jira','Confluence','Trello','Asana','Slack',

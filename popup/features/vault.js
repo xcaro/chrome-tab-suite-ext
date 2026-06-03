@@ -66,7 +66,7 @@ async function renderMatchList() {
     return;
   }
 
-  matched.forEach((tab, i) => list.appendChild(buildTabRow(tab, i)));
+  matched.forEach(tab => list.appendChild(buildTabRow(tab)));
 }
 
 // ── Bookmark save ─────────────────────────────────────────────

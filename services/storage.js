@@ -6,15 +6,8 @@
 // =============================================================
 
 export const StorageService = {
-  local: chrome.storage.local,
-  sync:  chrome.storage.sync,
-
   async get(keys) {
     return chrome.storage.local.get(keys);
-  },
-
-  async set(data) {
-    return chrome.storage.local.set(data);
   },
 
   // ── Per-feature helpers ──────────────────────────────────
@@ -35,10 +28,6 @@ export const StorageService = {
 
   async setActedCount(n) {
     return chrome.storage.local.set({ actedCount: n });
-  },
-
-  async resetActedCount() {
-    return chrome.storage.local.set({ actedCount: 0 });
   },
 
   // ── Defaults on install ──────────────────────────────────

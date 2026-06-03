@@ -59,8 +59,6 @@ function onReplaced() { scheduleUpdate(); }
 
 Registry.register({
   id:             'badge',
-  name:           'Duplicate Badge',
-  description:    'Hiển thị số nhóm tab trùng lên icon extension',
   defaultEnabled: true,
 
   init() {
@@ -69,16 +67,5 @@ Registry.register({
     chrome.tabs.onCreated.addListener(onCreated);
     chrome.tabs.onRemoved.addListener(onRemoved);
     chrome.tabs.onReplaced.addListener(onReplaced);
-  },
-
-  destroy() {
-    chrome.tabs.onUpdated.removeListener(onUpdated);
-    chrome.tabs.onCreated.removeListener(onCreated);
-    chrome.tabs.onRemoved.removeListener(onRemoved);
-    chrome.tabs.onReplaced.removeListener(onReplaced);
-    clearTimeout(_timer);
-    _timer   = null;
-    _pending = false;
-    chrome.action.setBadgeText({ text: '' }).catch(() => {});
   },
 });

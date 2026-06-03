@@ -35,18 +35,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 ### DRY: Logic empty-state HTML bị lặp ở 4 chỗ
 **File:** `closer.js`, `vault.js`, `dedup.js`, `ui.js`
 
-Cùng một đoạn HTML template `<div class="empty-state"><div class="e-icon">...</div>` xuất hiện nhiều lần với icon/text khác nhau. Mỗi lần muốn thay đổi layout phải sửa nhiều chỗ.
+~~Cùng một đoạn HTML template `<div class="empty-state"><div class="e-icon">...</div>` xuất hiện nhiều lần với icon/text khác nhau. Mỗi lần muốn thay đổi layout phải sửa nhiều chỗ.~~
 
-**Fix:** Thêm helper `buildEmptyState(icon, title, subtitle)` vào `ui.js`, trả về một HTMLElement.
+**✅ Done:** Thêm `buildEmptyState()` và `renderEmptyState()` trong `popup/services/ui.js`.
 
 ---
 
 ### DRY: Pattern disable/enable button trong async actions bị lặp
 **File:** `closer.js`: `closeAll()`, `newWindow()` — `dedup.js`: `closeAll()`
 
-Pattern `btn.disabled = true` → thực thi → `btn.disabled = false` trong try/finally xuất hiện ở mọi action button. Nếu có exception không bắt được, button sẽ bị stuck.
+~~Pattern `btn.disabled = true` → thực thi → `btn.disabled = false` trong try/finally xuất hiện ở mọi action button. Nếu có exception không bắt được, button sẽ bị stuck.~~
 
-**Fix:** Extract helper `withButtonLock(btn, asyncFn)` trong `ui.js`: `btn.disabled=true`, gọi fn trong try/finally, luôn restore.
+**✅ Done:** Extract `withButtonLock(btn, asyncFn)` trong `popup/services/ui.js`.
 
 ---
 
@@ -108,7 +108,7 @@ if (!UI_MODE_HANDLERS[uiMode]) {
 
 ~~Throttle 300ms hoạt động tốt cho tab đơn lẻ. Nhưng khi user nhấn "Close all" (đóng 20+ tabs), Chrome có thể fire `onRemoved` trong các macro-task riêng — timer reset liên tục, badge update bị delay 300ms sau lần close cuối cùng.~~
 
-**✅ Done:** Chuyển sang leading+trailing debounce: fire ngay lần đầu (`updateBadge()` trước `setTimeout`), trailing update chạy nếu có thêm event trong cooldown. `destroy()` cũng reset `_pending`.
+**✅ Done:** Chuyển sang leading+trailing debounce: fire ngay lần đầu (`updateBadge()` trước `setTimeout`), trailing update chạy nếu có thêm event trong cooldown.
 
 ---
 

@@ -19,7 +19,6 @@ export const FilterService = {
     const state = {
       id: featureId,
       filters,
-      excludedUrls: new Set(),
       shouldProcess(url) {
         return FilterService.shouldProcess(featureId, url);
       },
@@ -40,7 +39,6 @@ export const FilterService = {
     if (!norm) return false;
     const rule = _rules.get(featureId);
     if (!rule) return true;
-    if (rule.excludedUrls.has(norm)) return false;
     return !rule.filters.length || matchesDomainFilter(url, rule.filters);
   },
 

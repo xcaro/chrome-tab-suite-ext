@@ -204,7 +204,7 @@ function _makeFavicon(favIconUrl) {
 }
 
 // ── Tab row ───────────────────────────────────────────────────────────────────
-export function buildTabRow(tab, idx, actions = []) {
+export function buildTabRow(tab, actions = []) {
   const row = document.createElement('div');
   row.className = 'dup-tab-row';
 
@@ -300,7 +300,7 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
         },
       }] : [];
 
-      const row = buildTabRow(tab, i, closeAction);
+      const row = buildTabRow(tab, closeAction);
       (windowBlock ?? tabList).appendChild(row);
     });
   }

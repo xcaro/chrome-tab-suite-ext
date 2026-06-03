@@ -5,7 +5,7 @@
 
 import { normalizeUrl, isProcessableUrl } from './url-utils.js';
 
-export function groupTabsByNormalizedUrl(tabs) {
+function groupTabsByNormalizedUrl(tabs) {
   const groups = new Map();
 
   for (const tab of tabs) {

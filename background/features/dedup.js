@@ -72,8 +72,6 @@ function onCreated(tab) {
 
 Registry.register({
   id:             'dedup',
-  name:           'Auto Tab Deduplicator',
-  description:    'Tự động đóng tab trùng khi mở tab mới',
   defaultEnabled: true,
 
   async init() {
@@ -81,12 +79,5 @@ Registry.register({
     chrome.storage.onChanged.addListener(onStorageChanged);
     chrome.tabs.onUpdated.addListener(onUpdated);
     chrome.tabs.onCreated.addListener(onCreated);
-  },
-
-  destroy() {
-    chrome.storage.onChanged.removeListener(onStorageChanged);
-    chrome.tabs.onUpdated.removeListener(onUpdated);
-    chrome.tabs.onCreated.removeListener(onCreated);
-    _processing.clear();
   },
 });

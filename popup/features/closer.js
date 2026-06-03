@@ -230,7 +230,7 @@ async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
   btnAll.disabled       = btnNewWindow.disabled      = _hostOnly;
   btnAll.style.display  = btnNewWindow.style.display = _hostOnly ? 'none' : '';
   list.innerHTML        = '';
-  matched.forEach((tab, i) => list.appendChild(buildTabRow(tab, i, [makeCloseAction(tab)])));
+  matched.forEach(tab => list.appendChild(buildTabRow(tab, [makeCloseAction(tab)])));
 }
 
 async function render(tabsPromise) {

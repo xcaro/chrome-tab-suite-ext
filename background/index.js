@@ -15,7 +15,6 @@ import './features/badge.js';
 
 // ── Register core message handlers ──────────────────────────
 MessageBus.register(MessageType.SetAutoDetect, async () => ({ ok: true }));
-MessageBus.register(MessageType.GetFeatures,   async () => ({ features: Registry.getAll() }));
 
 // ── Boot ─────────────────────────────────────────────────────
 MessageBus.listen();

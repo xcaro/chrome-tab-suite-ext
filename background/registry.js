@@ -1,6 +1,6 @@
 // =============================================================
 // background/registry.js — Feature Registry (Service Worker)
-// Manages feature lifecycle: register → start → stop → toggle.
+// Manages feature startup based on persisted enabled flags.
 // Features register themselves; registry never imports features.
 // =============================================================
 
@@ -33,25 +33,4 @@ export const Registry = {
     }
   },
 
-  _stop(id) {
-    const feature = _registry.get(id);
-    if (feature?.active) {
-      feature.destroy?.();
-      feature.active = false;
-    }
-  },
-
-  async toggle(id, enabled) {
-    enabled ? this._start(id) : this._stop(id);
-    // Persist preference
-    const { enabledFeatures = {} } = await StorageService.get({ enabledFeatures: {} });
-    await StorageService.set({ enabledFeatures: { ...enabledFeatures, [id]: enabled } });
-  },
-
-  // Snapshot for popup queries
-  getAll() {
-    return Array.from(_registry.values()).map(({ id, name, description, defaultEnabled, active }) => ({
-      id, name, description, defaultEnabled, active,
-    }));
-  },
 };
