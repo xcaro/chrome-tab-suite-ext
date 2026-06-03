@@ -9,7 +9,7 @@ import { showToast, setToggleLabel } from '../services/ui.js';
 
 // ── UI Mode + Theme ───────────────────────────────────────────
 async function loadSettings() {
-  const { uiMode = 'sidepanel', theme = 'system' } = await chrome.storage.sync.get(['uiMode', 'theme']);
+  const { uiMode, theme } = await StorageService.getUiPreferences();
   const uiModeSelect = document.getElementById('settingsUiMode');
   if (uiModeSelect) uiModeSelect.value = uiMode;
   const themeSelect = document.getElementById('settingsTheme');
@@ -54,7 +54,7 @@ export function init() {
   const uiModeSelect = document.getElementById('settingsUiMode');
   if (uiModeSelect) {
     uiModeSelect.addEventListener('change', async () => {
-      await chrome.storage.sync.set({ uiMode: uiModeSelect.value });
+      await StorageService.setUiMode(uiModeSelect.value);
       showToast('Display mode updated — takes effect on next open', 'info');
     });
   }
@@ -64,7 +64,7 @@ export function init() {
   if (themeSelect) {
     themeSelect.addEventListener('change', async () => {
       const theme = themeSelect.value;
-      await chrome.storage.sync.set({ theme });
+      await StorageService.setTheme(theme);
       applyTheme(theme);
     });
   }

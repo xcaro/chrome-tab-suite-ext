@@ -5,13 +5,14 @@
 // =============================================================
 
 import { GlobalStats, PanelHooks, initPanelNav } from './services/ui.js';
+import { StorageService } from '../services/storage.js';
 import { init as initCloser   } from './features/closer.js';
 import { init as initVault    } from './features/vault.js';
 import { init as initDedup    } from './features/dedup.js';
 import { init as initSettings, applyTheme } from './features/settings.js';
 
 // Apply theme + uiMode immediately to avoid flash of wrong state
-chrome.storage.sync.get({ theme: 'system', uiMode: 'sidepanel' }).then(({ theme, uiMode }) => {
+StorageService.getUiPreferences().then(({ theme, uiMode }) => {
   applyTheme(theme);
   document.body.dataset.uiMode = uiMode;
 });

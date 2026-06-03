@@ -32,7 +32,7 @@ const UI_MODE_HANDLERS = {
 };
 
 async function applyUiMode() {
-  const { uiMode = 'sidepanel' } = await chrome.storage.sync.get('uiMode');
+  const uiMode = await StorageService.getUiMode();
   _uiMode = uiMode;
   await UI_MODE_HANDLERS[uiMode]?.();
 }
@@ -63,6 +63,6 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     enabledFeatures: {},
   });
   // Default uiMode to sidepanel on fresh install
-  await chrome.storage.sync.set({ uiMode: 'sidepanel' });
+  await StorageService.setUiMode('sidepanel');
   await applyUiMode();
 });

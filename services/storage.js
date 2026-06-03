@@ -1,11 +1,13 @@
 // =============================================================
 // services/storage.js — StorageService
-// Thin wrapper around chrome.storage.local with typed helpers.
+// Thin wrapper around chrome.storage with typed helpers.
 // All features read/write through here — no raw chrome.storage calls
 // scattered across feature files.
 // =============================================================
 
 export const StorageService = {
+  local: chrome.storage.local,
+  sync:  chrome.storage.sync,
 
   async get(keys) {
     return chrome.storage.local.get(keys);
@@ -42,5 +44,28 @@ export const StorageService = {
   // ── Defaults on install ──────────────────────────────────
   async initDefaults(defaults) {
     return chrome.storage.local.set(defaults);
+  },
+
+  // ── Synced UI preferences ────────────────────────────────
+  async getUiPreferences() {
+    const prefs = await chrome.storage.sync.get({ theme: 'system', uiMode: 'sidepanel' });
+    return {
+      ...prefs,
+      uiMode: prefs.uiMode === 'popup' || prefs.uiMode === 'sidepanel' ? prefs.uiMode : 'sidepanel',
+    };
+  },
+
+  async getUiMode() {
+    const { uiMode = 'sidepanel' } = await chrome.storage.sync.get({ uiMode: 'sidepanel' });
+    return uiMode === 'popup' || uiMode === 'sidepanel' ? uiMode : 'sidepanel';
+  },
+
+  async setUiMode(uiMode) {
+    const normalized = uiMode === 'popup' || uiMode === 'sidepanel' ? uiMode : 'sidepanel';
+    return chrome.storage.sync.set({ uiMode: normalized });
+  },
+
+  async setTheme(theme) {
+    return chrome.storage.sync.set({ theme });
   },
 };
