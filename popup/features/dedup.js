@@ -8,7 +8,7 @@ import { getDuplicateGroups, getDuplicateTabIdsToClose } from '../../shared/dedu
 import { FilterService } from '../../services/filter.js';
 import {
   showToast, setActed, GlobalStats, setToggleLabel,
-  PanelHooks, createDomainFilter, buildDupGroup,
+  PanelHooks, createDomainFilter, buildDupGroup, renderEmptyState, withButtonLock,
 } from '../services/ui.js';
 import { StorageService } from '../../services/storage.js';
 import { TabsService } from '../../services/tabs.js';
@@ -40,12 +40,7 @@ async function render(cached) {
     badge.style.display = 'none';
     btnClose.disabled   = true;
     const msg = _filter.hasFilters() ? 'No duplicates in filtered domains' : 'No duplicate tabs!';
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="e-icon">✓</div>
-        <div class="e-title">${msg}</div>
-        <div>All tabs are unique</div>
-      </div>`;
+    renderEmptyState(list, { icon: '✓', title: msg, subtitle: 'All tabs are unique' });
     return;
   }
 
@@ -65,19 +60,21 @@ async function render(cached) {
 
 // ── Close all ─────────────────────────────────────────────────
 async function closeAll() {
-  const scanned = await scan();
-  const { groups } = scanned;
-  if (!groups.length) return;
+  await withButtonLock('btnDedupeClose', async () => {
+    const scanned = await scan();
+    const { groups } = scanned;
+    if (!groups.length) return;
 
-  const toClose = getDuplicateTabIdsToClose(groups, { keepNewest: _keepNewest });
-  if (!toClose.length) return;
+    const toClose = getDuplicateTabIdsToClose(groups, { keepNewest: _keepNewest });
+    if (!toClose.length) return;
 
-  await TabsService.closeBestEffort(toClose);
+    await TabsService.closeBestEffort(toClose);
 
-  await setActed(toClose.length);
-  showToast(`Closed ${toClose.length} duplicate tab(s)`);
-  await render();   // fresh scan needed — tabs have changed
-  await GlobalStats.refresh();
+    await setActed(toClose.length);
+    showToast(`Closed ${toClose.length} duplicate tab(s)`);
+    await render();   // fresh scan needed — tabs have changed
+    await GlobalStats.refresh();
+  });
 }
 
 // ── Keep mode toggle ──────────────────────────────────────────

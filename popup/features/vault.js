@@ -8,7 +8,7 @@ import { FilterService } from '../../services/filter.js';
 import { resolveAllTitles } from '../../shared/title-engine.js';
 import {
   showToast, setActed, GlobalStats,
-  createDomainFilter, buildTabRow,
+  createDomainFilter, buildTabRow, renderEmptyState,
 } from '../services/ui.js';
 import { TabsService } from '../../services/tabs.js';
 
@@ -57,12 +57,12 @@ async function renderMatchList() {
   list.innerHTML        = '';
 
   if (!matched.length) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="e-icon">⚠</div>
-        <div class="e-title" style="color:var(--danger)">No tabs match</div>
-        <div>No open tabs match the current filter</div>
-      </div>`;
+    renderEmptyState(list, {
+      icon: '⚠',
+      title: 'No tabs match',
+      subtitle: 'No open tabs match the current filter',
+      titleColor: 'var(--danger)',
+    });
     return;
   }
 

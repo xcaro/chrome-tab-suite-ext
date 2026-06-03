@@ -8,7 +8,7 @@ import { FilterService } from '../../services/filter.js';
 import {
   showToast, setActed, GlobalStats,
   PanelHooks, createDomainFilter,
-  buildTabRow, buildDupGroup, windowHueForId,
+  buildTabRow, buildDupGroup, windowHueForId, renderEmptyState, withButtonLock,
 } from '../services/ui.js';
 import { TabsService } from '../../services/tabs.js';
 
@@ -25,13 +25,6 @@ function isHostOnly(url) {
     const u = new URL(url);
     return (u.pathname === '/' || u.pathname === '') && !u.search && !u.hash;
   } catch { return false; }
-}
-
-// Run async fn with a button disabled for its duration.
-async function withDisabled(btnId, fn) {
-  const btn = document.getElementById(btnId);
-  btn.disabled = true;
-  try { await fn(); } finally { btn.disabled = false; }
 }
 
 async function moveToNewWindow(tabs) {
@@ -90,12 +83,11 @@ function sortedRoots(tree) {
 function setEmptyState(list, badge, btnAll, btnNewWindow, message) {
   badge.style.display = btnAll.style.display = btnNewWindow.style.display = 'none';
   btnAll.disabled = btnNewWindow.disabled = true;
-  list.innerHTML = `
-    <div class="empty-state">
-      <div class="e-icon">✓</div>
-      <div class="e-title">${message}</div>
-    <div>${_filter.hasFilters() ? 'No open tabs match the current filter' : 'No tabs are currently open'}</div>
-    </div>`;
+  renderEmptyState(list, {
+    icon: '✓',
+    title: message,
+    subtitle: _filter.hasFilters() ? 'No open tabs match the current filter' : 'No tabs are currently open',
+  });
 }
 
 function renderWindowFilter(windowNames, windowTabCounts) {
@@ -261,7 +253,7 @@ async function getTargetTabs() {
 }
 
 async function closeAll() {
-  await withDisabled('btnCloserCloseAll', async () => {
+  await withButtonLock('btnCloserCloseAll', async () => {
     const tabs = await getTargetTabs();
     if (!tabs) return;
     await TabsService.closeBestEffort(tabs.map(t => t.id));
@@ -273,7 +265,7 @@ async function closeAll() {
 }
 
 async function newWindow() {
-  await withDisabled('btnNewWindow', async () => {
+  await withButtonLock('btnNewWindow', async () => {
     const tabs = await getTargetTabs();
     if (!tabs) return;
     await moveToNewWindow(tabs);

@@ -48,6 +48,37 @@ export function setToggleLabel(el, on) {
   el.className   = 'footer-sub ' + (on ? 'on' : 'off');
 }
 
+// ── Common UI helpers ────────────────────────────────────────────────────────
+export function buildEmptyState({ icon = '✓', title, subtitle, titleColor = '' }) {
+  const root = document.createElement('div');
+  root.className = 'empty-state';
+
+  const iconEl = document.createElement('div');
+  iconEl.className = 'e-icon';
+  iconEl.textContent = icon;
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'e-title';
+  titleEl.textContent = title;
+  if (titleColor) titleEl.style.color = titleColor;
+
+  const subtitleEl = document.createElement('div');
+  subtitleEl.textContent = subtitle;
+
+  root.append(iconEl, titleEl, subtitleEl);
+  return root;
+}
+
+export function renderEmptyState(container, options) {
+  container.replaceChildren(buildEmptyState(options));
+}
+
+export async function withButtonLock(btnOrId, fn) {
+  const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
+  btn.disabled = true;
+  try { return await fn(); } finally { btn.disabled = false; }
+}
+
 // ── Global stats ──────────────────────────────────────────────────────────────
 // Window count is cached via listeners so it never blocks the stats render path.
 let _cachedWindowCount = 0;
