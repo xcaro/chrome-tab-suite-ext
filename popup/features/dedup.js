@@ -20,21 +20,23 @@ let   _keepNewest = true;
 // ── Scan ─────────────────────────────────────────────────────
 async function scan() {
   const allTabs = await TabsService.all();
-  const allGroups = getDuplicateGroups(allTabs);
+  const duplicateGroups = getDuplicateGroups(allTabs);
 
   const groups = _filter.hasFilters()
-    ? allGroups.filter(tabs => _filter.shouldProcess(tabs[0].url))
-    : allGroups;
+    ? duplicateGroups.filter(tabs => _filter.shouldProcess(tabs[0].url))
+    : duplicateGroups;
 
-  return { allTabs, allGroups, groups };
+  return { allTabs, groups };
 }
 
 // ── Render ────────────────────────────────────────────────────
 async function render(cached) {
-  const { allTabs, allGroups, groups } = cached ?? await scan();
+  const { allTabs, groups } = cached ?? await scan();
   const list     = document.getElementById('dupList');
   const badge    = document.getElementById('dupBadge');
   const btnClose = document.getElementById('btnDedupeClose');
+  const windowIds = [...new Set(allTabs.map(t => t.windowId))].sort((a, b) => a - b);
+  const windowNames = new Map(windowIds.map((id, i) => [id, `WINDOW ${i + 1}`]));
 
   if (!groups.length) {
     badge.style.display = 'none';
@@ -49,6 +51,7 @@ async function render(cached) {
   btnClose.disabled   = false;
   list.innerHTML      = '';
   groups.forEach(tabs => list.appendChild(buildDupGroup(tabs, {
+    windowNames,
     onTabClose: async () => {
       await render();
       await GlobalStats.refresh();
@@ -78,13 +81,16 @@ async function closeAll() {
 }
 
 // ── Keep mode toggle ──────────────────────────────────────────
-async function setKeepUI(newest) {
+function applyKeepUI(newest) {
   _keepNewest = newest;
   const label = document.getElementById('keepModeLabel');
-  if (label) {
-    label.textContent  = newest ? 'Newest' : 'Oldest';
-    label.style.color  = newest ? 'var(--accent)' : 'var(--warn)';
-  }
+  if (!label) return;
+  label.textContent = newest ? 'Newest' : 'Oldest';
+  label.style.color = newest ? 'var(--accent)' : 'var(--warn)';
+}
+
+async function setKeepUI(newest) {
+  applyKeepUI(newest);
   await StorageService.setEnabled('keepNewest', newest);
 }
 
@@ -92,12 +98,7 @@ async function loadKeepMode() {
   const newest = await StorageService.isEnabled('keepNewest', true);
   const keepToggle = document.getElementById('keepModeToggle');
   if (keepToggle) keepToggle.checked = newest;
-  _keepNewest = newest;
-  const label = document.getElementById('keepModeLabel');
-  if (label) {
-    label.textContent = newest ? 'Newest' : 'Oldest';
-    label.style.color = newest ? 'var(--accent)' : 'var(--warn)';
-  }
+  applyKeepUI(newest);
 }
 
 // ── Init ─────────────────────────────────────────────────────

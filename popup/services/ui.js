@@ -289,7 +289,7 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
         label: '✕', className: 'close-tab-btn', title: 'Close this tab',
         onClick: async () => {
           try {
-            onInternalClose?.();
+            onInternalClose?.(tab.id);
             await TabsService.close(tab.id);
             await setActed(1);
           } catch { /* already closed */ }

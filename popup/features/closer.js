@@ -121,6 +121,7 @@ function makeCloseAction(tab) {
   return {
     label: '✕', className: 'close-tab-btn', title: 'Close this tab',
     onClick: async () => {
+      suppressNextRemoved(tab.id);
       await TabsService.closeBestEffort(tab.id);
       await setActed(1);
       await render();
@@ -159,6 +160,7 @@ function buildGroupHeader(root, tabs, group) {
       .filter(t => t.id !== activeTab?.id)
       .map(t => t.id)
       .concat(tabs.find(t => t.id === activeTab?.id)?.id ?? []);
+    toClose.forEach(suppressNextRemoved);
     await TabsService.closeBestEffort(toClose);
     await setActed(toClose.length);
     showToast(`Closed ${toClose.length} "${root}" tab(s)`);
@@ -256,7 +258,9 @@ async function closeAll() {
   await withButtonLock('btnCloserCloseAll', async () => {
     const tabs = await getTargetTabs();
     if (!tabs) return;
-    await TabsService.closeBestEffort(tabs.map(t => t.id));
+    const ids = tabs.map(t => t.id);
+    ids.forEach(suppressNextRemoved);
+    await TabsService.closeBestEffort(ids);
     await setActed(tabs.length);
     showToast(`Closed ${tabs.length} tab(s)`);
     await render();
@@ -308,21 +312,21 @@ export function init() {
   // Suppress external re-render when a tab is closed from within the popup UI.
   // Chrome fires onRemoved for internal closes too — we track them to avoid
   // collapsing expanded groups.
-  let _internalCloseCount = 0;
+  const _pendingInternalClose = new Set();
   const isCloserActive = () => document.getElementById('panel-closer')?.classList.contains('active');
 
-  async function onTabsChanged() {
-    if (!isCloserActive() || _internalCloseCount > 0) return;
+  async function onTabsChanged(_tabId) {
+    if (!isCloserActive()) return;
     await render();
     await GlobalStats.refresh();
   }
 
   chrome.tabs.onCreated.addListener(onTabsChanged);
-  chrome.tabs.onRemoved.addListener(onTabsChanged);
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    if (_pendingInternalClose.delete(tabId)) return;
+    onTabsChanged(tabId);
+  });
   chrome.tabs.onUpdated.addListener((_id, info) => { if (info.url !== undefined) onTabsChanged(); });
 
-  suppressNextRemoved = () => {
-    _internalCloseCount++;
-    setTimeout(() => { _internalCloseCount = Math.max(0, _internalCloseCount - 1); }, 500);
-  };
+  suppressNextRemoved = (tabId) => { _pendingInternalClose.add(tabId); };
 }
