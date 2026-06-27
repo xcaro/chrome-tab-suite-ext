@@ -4,7 +4,6 @@
 // =============================================================
 
 import { isHttpTab, normalizeUrl, _isDomainToken, normDomain } from '../../shared/url-utils.js';
-import { StorageService } from '../../services/storage.js';
 import { TabsService } from '../../services/tabs.js';
 
 // ── Window color palette ──────────────────────────────────────────────────────
@@ -34,12 +33,6 @@ export function showToast(msg, type = 'success') {
 // ── Tab focus ─────────────────────────────────────────────────────────────────
 export async function focusTab(tab) {
   await TabsService.focus(tab);
-}
-
-// ── Acted count ───────────────────────────────────────────────────────────────
-export async function setActed(n) {
-  const prev = await StorageService.getActedCount();
-  await StorageService.setActedCount(prev + n);
 }
 
 // ── Toggle label ──────────────────────────────────────────────────────────────
@@ -112,7 +105,6 @@ export const GlobalStats = {
   // Called once at boot with the shared tabs promise — avoids a redundant query.
   async initWithTabs(tabsPromise) {
     _initWindowCountCache();
-    await StorageService.setActedCount(0);
     return this._update(tabsPromise);
   },
 
@@ -291,7 +283,6 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
           try {
             onInternalClose?.(tab.id);
             await TabsService.close(tab.id);
-            await setActed(1);
           } catch { /* already closed */ }
           tabCount--;
           if (tabCount === 0 || (removeGroupWhenSingle && tabCount === 1)) group.remove();

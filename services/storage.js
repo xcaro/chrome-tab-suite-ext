@@ -21,15 +21,6 @@ export const StorageService = {
     return chrome.storage.local.set({ [key]: value });
   },
 
-  async getActedCount() {
-    const { actedCount = 0 } = await chrome.storage.local.get({ actedCount: 0 });
-    return actedCount;
-  },
-
-  async setActedCount(n) {
-    return chrome.storage.local.set({ actedCount: n });
-  },
-
   // ── Defaults on install ──────────────────────────────────
   async initDefaults(defaults) {
     return chrome.storage.local.set(defaults);

@@ -7,7 +7,7 @@
 import { getDuplicateGroups, getDuplicateTabIdsToClose } from '../../shared/dedup-core.js';
 import { FilterService } from '../../services/filter.js';
 import {
-  showToast, setActed, GlobalStats, setToggleLabel,
+  showToast, GlobalStats, setToggleLabel,
   PanelHooks, createDomainFilter, buildDupGroup, renderEmptyState, withButtonLock,
 } from '../services/ui.js';
 import { StorageService } from '../../services/storage.js';
@@ -73,7 +73,6 @@ async function closeAll() {
 
     await TabsService.closeBestEffort(toClose);
 
-    await setActed(toClose.length);
     showToast(`Closed ${toClose.length} duplicate tab(s)`);
     await render();   // fresh scan needed — tabs have changed
     await GlobalStats.refresh();

@@ -5,7 +5,6 @@
 // =============================================================
 
 import { StorageService } from '../../services/storage.js';
-import { MessageType } from '../../shared/messages.js';
 import { showToast, setToggleLabel } from '../services/ui.js';
 
 // ── UI Mode + Theme ───────────────────────────────────────────
@@ -77,7 +76,6 @@ export function init() {
     autoToggle.addEventListener('change', async () => {
       const on = autoToggle.checked;
       await StorageService.setEnabled('autoDetect', on);
-      chrome.runtime.sendMessage({ type: MessageType.SetAutoDetect, enabled: on }).catch(() => {});
       if (autoStatus) setToggleLabel(autoStatus, on);
     });
   }

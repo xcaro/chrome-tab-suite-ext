@@ -5,19 +5,13 @@
 // =============================================================
 
 import { Registry }       from './registry.js';
-import { MessageBus }     from './message-bus.js';
 import { StorageService } from '../services/storage.js';
-import { MessageType }    from '../shared/messages.js';
 
 // ── Register features ────────────────────────────────────────
 import './features/dedup.js';
 import './features/badge.js';
 
-// ── Register core message handlers ──────────────────────────
-MessageBus.register(MessageType.SetAutoDetect, async () => ({ ok: true }));
-
 // ── Boot ─────────────────────────────────────────────────────
-MessageBus.listen();
 Registry.startAll();
 
 // ── UI Mode ──────────────────────────────────────────────────
@@ -62,7 +56,6 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason !== 'install') return;
   await StorageService.initDefaults({
     autoDetect:      false,
-    actedCount:      0,
     enabledFeatures: {},
   });
   // Default uiMode to sidepanel on fresh install

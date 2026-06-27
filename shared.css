@@ -298,7 +298,15 @@ body.light-mode .window-tag-active {
 .check-label { font-size: 12px; color: var(--muted); }
 
 /* ─── PROGRESS BAR ───────────────────────── */
-.progress-bar { height: 2px; background: var(--border); }
+.progress-bar {
+  display: none;
+  height: 2px;
+  width: 100%;
+  background: var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.progress-bar.active { display: block; }
 .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
 
 /* ─── BUTTONS ────────────────────────────── */

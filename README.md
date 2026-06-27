@@ -95,13 +95,13 @@ When toggled on, the background service worker (`background/features/dedup.js`) 
 
 ## Global Stats Bar
 
-Always visible between the tab nav and the active panel content. Shows three live counters:
+Always visible between the tab nav and the active panel content. Shows live counters:
 
 | Counter | Description |
 |---|---|
+| **Open windows** | Total browser windows. Shown in side panel mode |
 | **Open tabs** | Total HTTP/HTTPS/FTP tabs across all windows |
 | **Duplicates** | Number of duplicate URL groups detected. Useful context even when outside the Dedup panel — e.g. Vault's "skip duplicates" option is informed by this count |
-| **Processed** | Snapshot of the most recent operation (tabs saved, duplicates closed). Resets to the latest action, not cumulative |
 
 ---
 
@@ -127,7 +127,6 @@ The extension uses a **module pattern** — each panel is an ES module exporting
 ```
 shared/url-utils.js
 shared/dedup-core.js
-shared/messages.js
 shared/title-engine.js
 services/storage.js
 services/filter.js
@@ -139,7 +138,6 @@ popup/features/dedup.js
 popup/index.js          ← entry point
 
 background/registry.js
-background/message-bus.js
 background/features/dedup.js
 background/index.js     ← service worker entry point
 ```
@@ -150,20 +148,18 @@ background/index.js     ← service worker entry point
 |---|---|
 | `shared/url-utils.js` | Pure URL helpers: `normalizeUrl`, `isHttpTab`, `normDomain`, `matchesDomainFilter`, `parseDomainLevels` (PSL-aware). No DOM, no Chrome API — safe in any context. |
 | `shared/dedup-core.js` | Pure duplicate-tab helpers shared by popup and background badge/dedup features. |
-| `shared/messages.js` | Runtime message type constants shared by popup and background. |
 | `shared/title-engine.js` | Smart title resolution: `DOMAIN_RULES` plugin array, `smartTitle()`, `resolveAllTitles()`. Handles 6 platforms plus a generic suffix-stripping catch-all. |
 | `services/storage.js` | Thin wrapper over `chrome.storage.local` / `chrome.storage.sync` with typed helpers. All features read/write through here. |
 | `services/filter.js` | Shared domain/URL filtering: each feature registers a namespace and gets an explicit filter state object. |
 | `services/tabs.js` | Thin adapter for common Chrome tab/window operations such as query, focus, close, and move-to-window. |
-| `popup/services/ui.js` | DOM utilities: toast, `focusTab`, `setActed`, `GlobalStats`, `PanelHooks`, `createDomainFilter`, `buildTabRow`, `buildDupGroup`. Shared UI components used by all panels. |
+| `popup/services/ui.js` | DOM utilities: toast, `focusTab`, `GlobalStats`, `PanelHooks`, `createDomainFilter`, `buildTabRow`, `buildDupGroup`. Shared UI components used by all panels. |
 | `popup/features/closer.js` | Manager panel — grouped overview, filtered close, new-window move, host-only toggle. |
 | `popup/features/vault.js` | Vault panel — bookmark save logic, folder structure, smart title batching, domain filter state. |
 | `popup/features/dedup.js` | Dedup panel — duplicate scan, grouped list render, close logic, keep-mode toggle, auto-detect wiring. |
 | `popup/index.js` | Popup entry point — initializes all panels, renders Manager on boot. |
 | `background/registry.js` | Feature registry for the service worker — starts registered features based on persisted enabled flags. |
-| `background/message-bus.js` | Central `chrome.runtime.onMessage` listener. Prevents the "message port closed" race condition that occurs when multiple feature files each register their own `onMessage` handler. |
 | `background/features/dedup.js` | Background auto-deduplicator — listens to `tabs.onUpdated` and `tabs.onCreated`, closes duplicates immediately, respects keep-mode from storage. |
-| `background/index.js` | Service worker entry point — imports features to register them, calls `MessageBus.listen()` and `Registry.startAll()`. |
+| `background/index.js` | Service worker entry point — imports features to register them, starts the registry, owns display-mode and install defaults. |
 
 ---
 
@@ -173,7 +169,7 @@ background/index.js     ← service worker entry point
 |---|---|
 | `tabs` | Query, update, close, and move tabs; read `tab.url`, `tab.title`, `tab.lastAccessed`, `tab.favIconUrl` |
 | `bookmarks` | Create bookmark folders and entries (Vault) |
-| `storage` | Persist settings: auto-detect state, keep-mode, acted count |
+| `storage` | Persist settings: auto-detect state, keep-mode, display mode, and theme |
 | `sidePanel` | Open the extension as a Chrome side panel |
 
 ---
@@ -191,10 +187,6 @@ Standard `.split('.').slice(-2)` incorrectly groups unrelated sites on shared ho
 ### MV3 Service Worker Safety
 
 MV3 service workers can be killed and restarted by Chrome at any time. Tab Suite never stores state in service worker memory. All feature flags (`autoDetect`, `keepNewest`) are read from `chrome.storage.local` on every event handler invocation.
-
-### Message Bus
-
-Chrome closes the message channel as soon as any `onMessage` listener returns `undefined`. With multiple feature files, they race each other and produce `"The message port closed before a response was received."` errors. `background/message-bus.js` solves this with a single central listener — features register handlers via `MessageBus.register(type, handler)` instead of calling `chrome.runtime.onMessage` directly.
 
 ### Favicon Loading
 

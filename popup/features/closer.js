@@ -6,7 +6,7 @@
 import { isHttpTab, parseDomainLevels } from '../../shared/url-utils.js';
 import { FilterService } from '../../services/filter.js';
 import {
-  showToast, setActed, GlobalStats,
+  showToast, GlobalStats,
   PanelHooks, createDomainFilter,
   buildTabRow, buildDupGroup, windowHueForId, renderEmptyState, withButtonLock,
 } from '../services/ui.js';
@@ -100,7 +100,6 @@ async function mergeWindowsFromButton(btn) {
       }
       const targetLabel = btn.textContent.replace(/^.*\binto\s+/, '').trim() || 'target window';
       _selectedWindows.clear();
-      await setActed(moved);
       showToast(`Merged ${moved} tab(s) into ${targetLabel}`);
       await render();
       await GlobalStats.refresh();
@@ -205,7 +204,6 @@ function makeCloseAction(tab) {
     onClick: async () => {
       suppressNextRemoved(tab.id);
       await TabsService.closeBestEffort(tab.id);
-      await setActed(1);
       await render();
       await GlobalStats.refresh();
     },
@@ -244,7 +242,6 @@ function buildGroupHeader(root, tabs, group) {
       .concat(tabs.find(t => t.id === activeTab?.id)?.id ?? []);
     toClose.forEach(suppressNextRemoved);
     await TabsService.closeBestEffort(toClose);
-    await setActed(toClose.length);
     showToast(`Closed ${toClose.length} "${root}" tab(s)`);
     await render(); await GlobalStats.refresh();
   });
@@ -360,7 +357,6 @@ async function closeAll() {
     const ids = tabs.map(t => t.id);
     ids.forEach(suppressNextRemoved);
     await TabsService.closeBestEffort(ids);
-    await setActed(tabs.length);
     showToast(`Closed ${tabs.length} tab(s)`);
     await render();
     await GlobalStats.refresh();
@@ -372,7 +368,6 @@ async function newWindow() {
     const tabs = await getTargetTabs();
     if (!tabs) return;
     await moveToNewWindow(tabs);
-    await setActed(tabs.length);
     showToast(`Moved ${tabs.length} tab(s)`);
     await render();
     await GlobalStats.refresh();

@@ -7,7 +7,7 @@ import { isHttpTab, normalizeUrl, parseDomainLevels, _isDomainToken } from '../.
 import { FilterService } from '../../services/filter.js';
 import { resolveAllTitles } from '../../shared/title-engine.js';
 import {
-  showToast, setActed, GlobalStats,
+  showToast, GlobalStats,
   createDomainFilter, buildTabRow, renderEmptyState,
 } from '../services/ui.js';
 import { TabsService } from '../../services/tabs.js';
@@ -21,7 +21,11 @@ function formatDate(d = new Date()) {
 }
 
 function setProgress(pct) {
-  document.getElementById('progressFill').style.width = pct + '%';
+  const fill = document.getElementById('progressFill');
+  if (!fill) return;
+  const bar = fill.closest('.progress-bar');
+  fill.style.width = pct + '%';
+  bar?.classList.toggle('active', pct > 0);
 }
 
 function capitalizeDomain(domain) {
@@ -161,7 +165,6 @@ async function save() {
       if (skipped) showToast(`Saved ${tabs.length} tabs — 1 tab kept open (active)`, 'info');
     }
 
-    await setActed(tabs.length);
     await GlobalStats.refresh();
     const note = _filter.hasFilters() ? ` (${_filter.filters.join(', ')})` : '';
     showToast(`Saved ${tabs.length} tabs to "${folderName}"${note}`);
