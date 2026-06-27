@@ -7,6 +7,7 @@ import { createFilterState } from '../../core/filters.js';
 import { createDomainFilter } from '../ui/domain-filter.js';
 import { renderEmptyState } from '../ui/empty-state.js';
 import { buildTabRow } from '../ui/tab-row.js';
+import { PanelHooks } from '../ui/nav.js';
 import { GlobalStats } from '../ui/stats.js';
 import { showToast } from '../ui/toast.js';
 import { focusTab, formatVaultDate, previewVaultTabs, saveVault } from '../usecases/save-vault.js';
@@ -116,4 +117,5 @@ export function init() {
   });
 
   document.getElementById('saveBtn').addEventListener('click', save);
+  PanelHooks['vault'] = renderMatchList;
 }

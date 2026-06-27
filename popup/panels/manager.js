@@ -21,8 +21,6 @@ const _filter = createFilterState();
 let _hostOnly = false;
 let _selectedWindows = new Set();
 
-export let suppressNextRemoved = () => {};
-
 function selectedWindowIds(windowNames) {
   return [...windowNames.keys()].filter(id => _selectedWindows.has(id));
 }
@@ -129,7 +127,6 @@ function closeRowAction(tab) {
   return {
     label: '✕', className: 'close-tab-btn', title: 'Close this tab',
     onClick: async ({ removeTabRow } = {}) => {
-      suppressNextRemoved(tab.id);
       await closeTabBestEffort(tab.id);
       removeTabRow?.();
       await render();
@@ -163,7 +160,7 @@ function makeGroupActions(root, tabs) {
     className: 'tab-group-btn',
     title: `Close all "${root}" tabs`,
     onClick: async () => {
-      const toClose = await closeDomainGroup(tabs, { beforeClose: suppressNextRemoved });
+      const toClose = await closeDomainGroup(tabs);
       showToast(`Closed ${toClose.length} "${root}" tab(s)`);
       await render();
       await GlobalStats.refresh();
@@ -276,7 +273,6 @@ async function closeAll() {
     const tabs = await getTargetTabs();
     if (!tabs) return;
     const ids = tabs.map(t => t.id);
-    ids.forEach(suppressNextRemoved);
     await closeTabsBestEffort(ids);
     showToast(`Closed ${tabs.length} tab(s)`);
     await render();
@@ -326,22 +322,4 @@ export function init() {
   document.getElementById('btnCloserCloseAll').addEventListener('click', closeAll);
   document.getElementById('btnNewWindow').addEventListener('click', newWindow);
   PanelHooks['closer'] = render;
-
-  const pendingInternalClose = new Set();
-  const isManagerActive = () => document.getElementById('panel-closer')?.classList.contains('active');
-
-  async function onTabsChanged(tabId) {
-    if (!isManagerActive()) return;
-    await render();
-    await GlobalStats.refresh();
-  }
-
-  chrome.tabs.onCreated.addListener(onTabsChanged);
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    if (pendingInternalClose.delete(tabId)) return;
-    onTabsChanged(tabId);
-  });
-  chrome.tabs.onUpdated.addListener((_id, info) => { if (info.url !== undefined) onTabsChanged(); });
-
-  suppressNextRemoved = (tabId) => { pendingInternalClose.add(tabId); };
 }
