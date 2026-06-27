@@ -37,7 +37,10 @@ async function applyUiMode() {
   await UI_MODE_HANDLERS[uiMode]?.();
 }
 
-// Sync cache on every service worker startup (MV3 workers are not persistent)
+// Sync cache every time the service worker wakes up (MV3 workers are not persistent)
+applyUiMode();
+
+// Also sync on browser startup (covers cold-start scenarios)
 chrome.runtime.onStartup.addListener(applyUiMode);
 
 // Re-sync immediately when user changes the setting
@@ -47,9 +50,9 @@ chrome.storage.onChanged.addListener(({ uiMode }) => uiMode && applyUiMode());
 // IMPORTANT: sidePanel.open() must be the first call — no await before it.
 chrome.action.onClicked.addListener((tab) => {
   if (_uiMode === 'sidepanel') {
-    // Call open() synchronously within the gesture handler, then do the rest
-    chrome.sidePanel.open({ windowId: tab.windowId });
+    // setOptions before open() to avoid race condition
     chrome.sidePanel.setOptions({ tabId: tab.id, enabled: true });
+    chrome.sidePanel.open({ windowId: tab.windowId });
   }
   // popup mode: this listener never fires because action has a popup set
 });
