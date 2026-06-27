@@ -397,9 +397,11 @@ body.light-mode .window-divider {
 
 .window-block {
   border-left: 2px solid hsl(var(--w-hue), 50%, 45%);
+  background: hsla(var(--w-hue), 32%, 18%, 0.07);
 }
 body.light-mode .window-block {
   border-left-color: hsl(var(--w-hue), 55%, 52%);
+  background: hsla(var(--w-hue), 42%, 96%, 0.34);
 }
 
 .dup-tab-row {
@@ -413,6 +415,8 @@ body.light-mode .window-block {
 }
 .dup-tab-row:last-child { border-bottom: none; }
 .dup-tab-row:hover { background: var(--bg); }
+.window-block .dup-tab-row:hover { background: hsla(var(--w-hue), 34%, 22%, 0.15); }
+body.light-mode .window-block .dup-tab-row:hover { background: hsla(var(--w-hue), 44%, 90%, 0.46); }
 .dup-tab-row:hover .focus-btn { opacity: 1; }
 
 .tab-idx { font-family: Arial, monospace; font-size: 10px; color: var(--muted); min-width: 14px; text-align: center; flex-shrink: 0; }
