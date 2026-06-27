@@ -101,6 +101,13 @@ function renderWindowFilter(windowNames, windowTabCounts) {
     return;
   }
 
+  // [FIX 2] Prune stale winIds that no longer exist (e.g. window was closed).
+  // Without this, _selectedWindows can hold a dead winId → visibleTabs becomes
+  // empty even though tabs from other windows are still open.
+  for (const winId of _selectedWindows) {
+    if (!windowNames.has(winId)) _selectedWindows.delete(winId);
+  }
+
   row.style.display = '';
   list.innerHTML    = '';
   for (const [winId, label] of windowNames) {
@@ -222,6 +229,15 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
 }
 
 async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
+  // [FIX 1] Hide window filter and reset selection state.
+  // Domain filter mode uses renderFiltered (flat list), which is incompatible
+  // with window filtering. Hiding the row prevents stale UI; clearing
+  // _selectedWindows prevents it from silently filtering tabs when the user
+  // later removes the domain filter and renderGrouped takes over again.
+  const windowFilterRow = document.getElementById('closerWindowFilterRow');
+  if (windowFilterRow) windowFilterRow.style.display = 'none';
+  _selectedWindows.clear();
+
   const matched = _filter.filterTabs(allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
