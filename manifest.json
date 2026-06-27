@@ -23,7 +23,7 @@
     }
   },
   "side_panel": {
-    "default_path": "panel.html"
+    "default_path": "popup/app.html"
   },
   "icons": {
     "16": "icons/icon16.png",

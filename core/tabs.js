@@ -1,6 +1,5 @@
 // =============================================================
-// services/tabs.js — Chrome tab/window operations
-// Keeps feature modules focused on use-cases and UI state.
+// core/tabs.js — Chrome tab/window operations
 // =============================================================
 
 export const TabsService = {

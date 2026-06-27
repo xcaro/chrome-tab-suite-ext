@@ -1,9 +1,8 @@
 // =============================================================
-// shared/dedup-core.js — Pure duplicate-tab helpers
-// No DOM. No Chrome API. Safe to use in popup/background/tests.
+// core/duplicates.js — pure duplicate-tab helpers
 // =============================================================
 
-import { normalizeUrl, isProcessableUrl } from './url-utils.js';
+import { normalizeUrl, isProcessableUrl } from './urls.js';
 
 function groupTabsByNormalizedUrl(tabs) {
   const groups = new Map();

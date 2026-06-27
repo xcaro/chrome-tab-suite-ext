@@ -6,7 +6,7 @@ import {
   getDuplicateGroups,
   getDuplicateTabIdsToClose,
   getDuplicateTabsForUrl,
-} from '../shared/dedup-core.js';
+} from '../core/duplicates.js';
 
 const tabs = [
   { id: 1, url: 'https://example.com/a', lastAccessed: 10 },

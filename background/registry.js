@@ -4,7 +4,7 @@
 // Features register themselves; registry never imports features.
 // =============================================================
 
-import { StorageService } from '../services/storage.js';
+import { StorageService } from '../core/storage.js';
 
 const _registry = new Map();  // id → { ...feature, active: false }
 

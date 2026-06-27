@@ -1,5 +1,5 @@
 // =============================================================
-// shared/url-utils.js — pure URL & domain helpers
+// core/urls.js — pure URL & domain helpers
 // No DOM. No Chrome API. Safe to use in any context.
 // =============================================================
 
@@ -16,8 +16,6 @@ export function isHttpTab(tab) {
   return !!(tab.url && /^https?:\/\/|^ftp:\/\//.test(tab.url));
 }
 
-// URL-string variant of isHttpTab — used by background features that
-// receive raw URL strings rather than tab objects.
 export function isProcessableUrl(url) {
   return !!(url && /^(https?|ftp):\/\//.test(url));
 }
@@ -29,14 +27,14 @@ export function normDomain(raw) {
     .replace(/\/.*$/, '');
 }
 
-export function _isDomainToken(token) {
+export function isDomainToken(token) {
   return /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$/.test(token);
 }
 
 export function parseFilters(filters) {
   return {
-    domains: filters.filter(_isDomainToken),
-    texts:   filters.filter(f => !_isDomainToken(f)),
+    domains: filters.filter(isDomainToken),
+    texts:   filters.filter(f => !isDomainToken(f)),
   };
 }
 
@@ -93,7 +91,6 @@ const _PUBLIC_SUFFIXES = new Set([
   'workers.dev',
 ]);
 
-// Cache size is bounded to avoid unbounded growth in long popup sessions.
 const _ROOT_DOMAIN_CACHE_MAX = 500;
 const _rootDomainCache = new Map();
 
@@ -126,4 +123,11 @@ export function parseDomainLevels(hostname) {
   const h    = hostname.toLowerCase().replace(/^www\./, '');
   const root = _getRootDomain(h);
   return { root, sub: h !== root ? h : null };
+}
+
+export function isHostOnlyUrl(url) {
+  try {
+    const u = new URL(url);
+    return (u.pathname === '/' || u.pathname === '') && !u.search && !u.hash;
+  } catch { return false; }
 }

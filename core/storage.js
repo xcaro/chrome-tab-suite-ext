@@ -1,16 +1,11 @@
 // =============================================================
-// services/storage.js — StorageService
-// Thin wrapper around chrome.storage with typed helpers.
-// All features read/write through here — no raw chrome.storage calls
-// scattered across feature files.
+// core/storage.js — Chrome storage adapter
 // =============================================================
 
 export const StorageService = {
   async get(keys) {
     return chrome.storage.local.get(keys);
   },
-
-  // ── Per-feature helpers ──────────────────────────────────
 
   async isEnabled(key, defaultValue = false) {
     const result = await chrome.storage.local.get({ [key]: defaultValue });
@@ -21,12 +16,10 @@ export const StorageService = {
     return chrome.storage.local.set({ [key]: value });
   },
 
-  // ── Defaults on install ──────────────────────────────────
   async initDefaults(defaults) {
     return chrome.storage.local.set(defaults);
   },
 
-  // ── Synced UI preferences ────────────────────────────────
   async getUiPreferences() {
     const prefs = await chrome.storage.sync.get({ theme: 'system', uiMode: 'sidepanel' });
     return {

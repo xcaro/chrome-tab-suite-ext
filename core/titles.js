@@ -1,5 +1,5 @@
 // =============================================================
-// shared/title-engine.js — smart bookmark title resolution
+// core/titles.js — smart bookmark title resolution
 // =============================================================
 
 const _NOTE_PREFIX = /^[\(\[•]\s*\d+\s*[\)\]•]?\s*/;

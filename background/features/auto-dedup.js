@@ -1,20 +1,16 @@
 // =============================================================
-// background/features/dedup.js — Auto Tab Deduplicator
-// Registers with Registry. Uses StorageService + FilterService.
+// background/features/auto-dedup.js — Auto Tab Deduplicator
 // =============================================================
 
-import { Registry }                        from '../registry.js';
-import { StorageService }                  from '../../services/storage.js';
-import { TabsService }                     from '../../services/tabs.js';
-import { isProcessableUrl }                from '../../shared/url-utils.js';
-import { getDuplicateTabsForUrl }          from '../../shared/dedup-core.js';
+import { Registry } from '../registry.js';
+import { StorageService } from '../../core/storage.js';
+import { TabsService } from '../../core/tabs.js';
+import { isProcessableUrl } from '../../core/urls.js';
+import { getDuplicateTabsForUrl } from '../../core/duplicates.js';
 
-const STORAGE_KEY     = 'autoDetect';
+const STORAGE_KEY = 'autoDetect';
 const KEEP_NEWEST_KEY = 'keepNewest';
 
-// ── Settings cache ────────────────────────────────────────────────────────────
-// Read once at init, kept in sync via storage.onChanged.
-// Avoids 2 storage reads on every tab event.
 let _autoDetect = false;
 let _keepNewest = true;
 
@@ -24,32 +20,27 @@ async function loadSettings() {
 }
 
 function onStorageChanged(changes) {
-  if (STORAGE_KEY     in changes) _autoDetect = changes[STORAGE_KEY].newValue;
+  if (STORAGE_KEY in changes) _autoDetect = changes[STORAGE_KEY].newValue;
   if (KEEP_NEWEST_KEY in changes) _keepNewest = changes[KEEP_NEWEST_KEY].newValue;
 }
 
-// ── Re-entrant guard ──────────────────────────────────────────────────────────
-// Tracks tab IDs currently being processed so a Chrome-fired onUpdated/onCreated
-// event for a tab we're already closing doesn't trigger a second dedup run.
 const _processing = new Set();
 
 async function checkAndCloseDuplicate(newTabId, newTabUrl) {
-  if (!_autoDetect)                  return;
-  if (!isProcessableUrl(newTabUrl))  return;
-  if (_processing.has(newTabId))     return;
+  if (!_autoDetect) return;
+  if (!isProcessableUrl(newTabUrl)) return;
+  if (_processing.has(newTabId)) return;
 
-  const allTabs    = await TabsService.all();
+  const allTabs = await TabsService.all();
   const duplicates = getDuplicateTabsForUrl(allTabs, newTabId, newTabUrl);
   if (!duplicates.length) return;
 
   _processing.add(newTabId);
   try {
     if (_keepNewest) {
-      // Close all existing duplicates at once, keep the new tab
       await TabsService.closeBestEffort(duplicates.map(t => t.id));
       try { await TabsService.focus(newTabId); } catch { /* new tab may have been closed */ }
     } else {
-      // Close the new tab, focus the oldest existing duplicate
       await TabsService.closeBestEffort(newTabId);
       const oldest = duplicates.reduce((a, b) =>
         (a.lastAccessed || 0) <= (b.lastAccessed || 0) ? a : b
@@ -71,7 +62,7 @@ function onCreated(tab) {
 }
 
 Registry.register({
-  id:             'dedup',
+  id: 'dedup',
   defaultEnabled: true,
 
   async init() {

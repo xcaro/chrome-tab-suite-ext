@@ -4,9 +4,9 @@
 // Clears the badge automatically when there are no duplicates.
 // =============================================================
 
-import { Registry }          from '../registry.js';
-import { countDuplicateGroups } from '../../shared/dedup-core.js';
-import { TabsService } from '../../services/tabs.js';
+import { Registry } from '../registry.js';
+import { countDuplicateGroups } from '../../core/duplicates.js';
+import { TabsService } from '../../core/tabs.js';
 
 const BADGE_COLOR = '#E0462A';
 

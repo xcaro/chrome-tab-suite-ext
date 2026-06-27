@@ -5,10 +5,10 @@
 // =============================================================
 
 import { Registry }       from './registry.js';
-import { StorageService } from '../services/storage.js';
+import { StorageService } from '../core/storage.js';
 
 // ── Register features ────────────────────────────────────────
-import './features/dedup.js';
+import './features/auto-dedup.js';
 import './features/badge.js';
 
 // ── Boot ─────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ Registry.startAll();
 let _uiMode = 'sidepanel';
 
 const UI_MODE_HANDLERS = {
-  popup:     () => chrome.action.setPopup({ popup: 'popup.html' }),
+  popup:     () => chrome.action.setPopup({ popup: 'popup/app.html' }),
   sidepanel: () => chrome.action.setPopup({ popup: '' }),
 };
 

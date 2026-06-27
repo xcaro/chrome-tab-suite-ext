@@ -7,7 +7,7 @@ import {
   matchesDomainFilter,
   normalizeUrl,
   parseDomainLevels,
-} from '../shared/url-utils.js';
+} from '../core/urls.js';
 
 test('normalizeUrl rejects browser-internal protocols', () => {
   assert.equal(normalizeUrl('chrome://extensions'), null);
