@@ -256,7 +256,7 @@ export function buildDupGroup(tabs, { onTabClose, removeGroupWhenSingle = false,
 
   header.append(_makeFavicon(tabs.find(t => t.favIconUrl)?.favIconUrl ?? null), titleEl, countEl, chevron);
 
-  const showDividers = windowNames && new Set(tabs.map(t => t.windowId)).size > 1;
+  const showDividers = windowNames && new Set(tabs.map(t => t.windowId)).size > 0;
   let tabCount = tabs.length;
   let rendered = false;
 

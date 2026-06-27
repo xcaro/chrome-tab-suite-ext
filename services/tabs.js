@@ -37,4 +37,15 @@ export const TabsService = {
     if (rest.length) await chrome.tabs.move(rest, { windowId: newWin.id, index: -1 });
     return newWin.id;
   },
+
+  async mergeWindows(sourceWindowId, targetWindowId) {
+    if (sourceWindowId === targetWindowId) return 0;
+    const tabs = await chrome.tabs.query({ windowId: sourceWindowId });
+    const sortedIds = tabs
+      .sort((a, b) => a.index - b.index)
+      .map(tab => tab.id);
+    if (!sortedIds.length) return 0;
+    await chrome.tabs.move(sortedIds, { windowId: targetWindowId, index: -1 });
+    return sortedIds.length;
+  },
 };

@@ -16,6 +16,7 @@ import { TabsService } from '../../services/tabs.js';
 const _filter          = FilterService.register('closer');
 let   _hostOnly        = false;
 let   _selectedWindows = new Set();
+const MERGE_BUTTON_IDS = ['btnMergeIntoFirst', 'btnMergeIntoSecond'];
 
 export let suppressNextRemoved = () => {};
 
@@ -34,6 +35,74 @@ async function moveToNewWindow(tabs) {
     showToast('Could not move tabs: ' + err.message, 'error');
     return null;
   }
+}
+
+function buildWindowContext(tabs) {
+  const httpTabs = tabs.filter(isHttpTab);
+  const allWindowIds = [...new Set(httpTabs.map(t => t.windowId))].sort((a, b) => a - b);
+  return {
+    windowNames: new Map(allWindowIds.map((id, i) => [id, `WINDOW ${i + 1}`])),
+    windowTabCounts: new Map(allWindowIds.map(id => [id, httpTabs.filter(t => t.windowId === id).length])),
+  };
+}
+
+function selectedWindowIds(windowNames) {
+  return [...windowNames.keys()].filter(id => _selectedWindows.has(id));
+}
+
+function hideMergeControls() {
+  for (const id of MERGE_BUTTON_IDS) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.style.display = 'none';
+    btn.disabled = true;
+    delete btn.dataset.targetWindowId;
+    delete btn.dataset.sourceWindowId;
+  }
+}
+
+function renderMergeControls(windowNames) {
+  const selected = selectedWindowIds(windowNames);
+  if (selected.length !== 2) {
+    hideMergeControls();
+    return;
+  }
+
+  MERGE_BUTTON_IDS.forEach((id, i) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const targetWindowId = selected[i];
+    const sourceWindowId = selected[1 - i];
+    const targetLabel = windowNames.get(targetWindowId);
+    const sourceLabel = windowNames.get(sourceWindowId);
+
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.dataset.targetWindowId = String(targetWindowId);
+    btn.dataset.sourceWindowId = String(sourceWindowId);
+    btn.innerHTML = `<span>⤷</span> Append ${sourceLabel} to ${targetLabel}`;
+    btn.title = `Move all tabs from ${sourceLabel} into ${targetLabel}`;
+  });
+}
+
+async function mergeWindowsFromButton(btn) {
+  const targetWindowId = Number(btn.dataset.targetWindowId);
+  const sourceWindowId = Number(btn.dataset.sourceWindowId);
+  if (!targetWindowId || !sourceWindowId || targetWindowId === sourceWindowId) return;
+
+  await withButtonLock(btn, async () => {
+    try {
+      const moved = await TabsService.mergeWindows(sourceWindowId, targetWindowId);
+      const targetLabel = btn.textContent.replace(/^.*\bto\s+/, '').trim() || 'target window';
+      _selectedWindows.clear();
+      await setActed(moved);
+      showToast(`Merged ${moved} tab(s) into ${targetLabel}`);
+      await render();
+      await GlobalStats.refresh();
+    } catch (err) {
+      showToast('Could not merge windows: ' + err.message, 'error');
+    }
+  });
 }
 
 // ── Domain grouping ───────────────────────────────────────────────────────────
@@ -108,6 +177,7 @@ function renderWindowFilter(windowNames, windowTabCounts) {
     if (!windowNames.has(winId)) _selectedWindows.delete(winId);
   }
 
+  _selectedWindows = new Set([..._selectedWindows].filter(id => windowNames.has(id)));
   row.style.display = '';
   list.innerHTML    = '';
   for (const [winId, label] of windowNames) {
@@ -177,20 +247,16 @@ function buildGroupHeader(root, tabs, group) {
 }
 
 // ── Render modes ──────────────────────────────────────────────────────────────
-async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
-  const httpTabs = _filter.filterTabs(allTabs)
+async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow, windowNames) {
+  const scopedTabs = _filter.filterTabs(allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
-  if (!httpTabs.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No open tabs');
-
-  const allWindowIds  = [...new Set(httpTabs.map(t => t.windowId))].sort((a, b) => a - b);
-  const windowNames   = new Map(allWindowIds.map((id, i) => [id, `WINDOW ${i + 1}`]));
-  const windowTabCounts = new Map(allWindowIds.map(id => [id, httpTabs.filter(t => t.windowId === id).length]));
-  renderWindowFilter(windowNames, windowTabCounts);
+  if (!scopedTabs.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No open tabs');
 
   const visibleTabs = _selectedWindows.size > 0
-    ? httpTabs.filter(t => _selectedWindows.has(t.windowId))
-    : httpTabs;
+    ? scopedTabs.filter(t => _selectedWindows.has(t.windowId))
+    : scopedTabs;
+  if (!visibleTabs.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No open tabs');
 
   const tree  = sortGroups(groupTabsByDomain(visibleTabs));
   const roots = sortedRoots(tree);
@@ -200,8 +266,8 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
   btnAll.style.display = btnNewWindow.style.display = 'none';
   list.innerHTML       = '';
 
-  for (const root of roots) {
-    const tabs  = tree.get(root);
+  const appendDomainGroup = (root, targetList, sourceTree = tree) => {
+    const tabs  = sourceTree.get(root);
     const group = buildDupGroup(tabs, {
       windowNames,
       onInternalClose: suppressNextRemoved,
@@ -224,8 +290,10 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow) {
     if (titleEl) { titleEl.textContent = root; titleEl.title = root; }
 
     buildGroupHeader(root, tabs, group);
-    list.appendChild(group);
-  }
+    targetList.appendChild(group);
+  };
+
+  for (const root of roots) appendDomainGroup(root, list);
 }
 
 async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
@@ -241,14 +309,18 @@ async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
   const matched = _filter.filterTabs(allTabs)
     .filter(t => !_hostOnly || isHostOnly(t.url));
 
-  if (!matched.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No matching tabs');
+  const visibleTabs = _selectedWindows.size > 0
+    ? matched.filter(t => _selectedWindows.has(t.windowId))
+    : matched;
+
+  if (!visibleTabs.length) return setEmptyState(list, badge, btnAll, btnNewWindow, 'No matching tabs');
 
   badge.style.display   = '';
-  badge.textContent     = matched.length;
+  badge.textContent     = visibleTabs.length;
   btnAll.disabled       = btnNewWindow.disabled      = _hostOnly;
   btnAll.style.display  = btnNewWindow.style.display = _hostOnly ? 'none' : '';
   list.innerHTML        = '';
-  matched.forEach(tab => list.appendChild(buildTabRow(tab, [makeCloseAction(tab)])));
+  visibleTabs.forEach(tab => list.appendChild(buildTabRow(tab, [makeCloseAction(tab)])));
 }
 
 async function render(tabsPromise) {
@@ -257,16 +329,22 @@ async function render(tabsPromise) {
   const btnAll       = document.getElementById('btnCloserCloseAll');
   const btnNewWindow = document.getElementById('btnNewWindow');
   const allTabs      = await (tabsPromise ?? TabsService.all());
+  const { windowNames, windowTabCounts } = buildWindowContext(allTabs);
+  renderWindowFilter(windowNames, windowTabCounts);
+  renderMergeControls(windowNames);
   if (_filter.hasFilters()) await renderFiltered(allTabs, list, badge, btnAll, btnNewWindow);
-  else                                    await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow);
+  else                                    await renderGrouped(allTabs, list, badge, btnAll, btnNewWindow, windowNames);
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function getTargetTabs() {
   const allTabs = await TabsService.all();
-  const targets = _filter.hasFilters()
+  let targets = _filter.hasFilters()
     ? _filter.filterTabs(allTabs)
     : allTabs.filter(isHttpTab);
+  targets = targets
+    .filter(t => !_hostOnly || isHostOnly(t.url))
+    .filter(t => !_selectedWindows.size || _selectedWindows.has(t.windowId));
   return targets.length ? targets : null;
 }
 
@@ -323,6 +401,9 @@ export function init() {
 
   document.getElementById('btnCloserCloseAll').addEventListener('click', closeAll);
   document.getElementById('btnNewWindow').addEventListener('click', newWindow);
+  MERGE_BUTTON_IDS.forEach(id => {
+    document.getElementById(id)?.addEventListener('click', e => mergeWindowsFromButton(e.currentTarget));
+  });
   PanelHooks['closer'] = render;
 
   // Suppress external re-render when a tab is closed from within the popup UI.
