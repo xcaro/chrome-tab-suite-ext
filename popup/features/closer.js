@@ -16,7 +16,6 @@ import { TabsService } from '../../services/tabs.js';
 const _filter          = FilterService.register('closer');
 let   _hostOnly        = false;
 let   _selectedWindows = new Set();
-const MERGE_BUTTON_IDS = ['btnMergeIntoFirst', 'btnMergeIntoSecond'];
 
 export let suppressNextRemoved = () => {};
 
@@ -51,49 +50,55 @@ function selectedWindowIds(windowNames) {
 }
 
 function hideMergeControls() {
-  for (const id of MERGE_BUTTON_IDS) {
-    const btn = document.getElementById(id);
-    if (!btn) continue;
-    btn.style.display = 'none';
-    btn.disabled = true;
-    delete btn.dataset.targetWindowId;
-    delete btn.dataset.sourceWindowId;
-  }
+  const root = document.getElementById('mergeWindowActions');
+  if (!root) return;
+  root.style.display = 'none';
+  root.replaceChildren();
 }
 
 function renderMergeControls(windowNames) {
   const selected = selectedWindowIds(windowNames);
-  if (selected.length !== 2) {
+  const root = document.getElementById('mergeWindowActions');
+  if (!root || selected.length < 2) {
     hideMergeControls();
     return;
   }
 
-  MERGE_BUTTON_IDS.forEach((id, i) => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    const targetWindowId = selected[i];
-    const sourceWindowId = selected[1 - i];
-    const targetLabel = windowNames.get(targetWindowId);
-    const sourceLabel = windowNames.get(sourceWindowId);
+  root.style.display = '';
+  root.replaceChildren();
 
-    btn.style.display = '';
+  selected.forEach(targetWindowId => {
+    const targetLabel = windowNames.get(targetWindowId);
+    const sourceWindowIds = selected.filter(id => id !== targetWindowId);
+    const sourceLabels = sourceWindowIds.map(id => windowNames.get(id)).join(', ');
+
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-ghost';
     btn.disabled = false;
     btn.dataset.targetWindowId = String(targetWindowId);
-    btn.dataset.sourceWindowId = String(sourceWindowId);
-    btn.innerHTML = `<span>⤷</span> Append ${sourceLabel} to ${targetLabel}`;
-    btn.title = `Move all tabs from ${sourceLabel} into ${targetLabel}`;
+    btn.dataset.sourceWindowIds = sourceWindowIds.join(',');
+    btn.innerHTML = `<span>⤷</span> Append into ${targetLabel}`;
+    btn.title = `Move all tabs from ${sourceLabels} into ${targetLabel}`;
+    btn.addEventListener('click', e => mergeWindowsFromButton(e.currentTarget));
+    root.appendChild(btn);
   });
 }
 
 async function mergeWindowsFromButton(btn) {
   const targetWindowId = Number(btn.dataset.targetWindowId);
-  const sourceWindowId = Number(btn.dataset.sourceWindowId);
-  if (!targetWindowId || !sourceWindowId || targetWindowId === sourceWindowId) return;
+  const sourceWindowIds = (btn.dataset.sourceWindowIds || '')
+    .split(',')
+    .map(id => Number(id))
+    .filter(id => id && id !== targetWindowId);
+  if (!targetWindowId || !sourceWindowIds.length) return;
 
   await withButtonLock(btn, async () => {
     try {
-      const moved = await TabsService.mergeWindows(sourceWindowId, targetWindowId);
-      const targetLabel = btn.textContent.replace(/^.*\bto\s+/, '').trim() || 'target window';
+      let moved = 0;
+      for (const sourceWindowId of sourceWindowIds) {
+        moved += await TabsService.mergeWindows(sourceWindowId, targetWindowId);
+      }
+      const targetLabel = btn.textContent.replace(/^.*\binto\s+/, '').trim() || 'target window';
       _selectedWindows.clear();
       await setActed(moved);
       showToast(`Merged ${moved} tab(s) into ${targetLabel}`);
@@ -401,9 +406,6 @@ export function init() {
 
   document.getElementById('btnCloserCloseAll').addEventListener('click', closeAll);
   document.getElementById('btnNewWindow').addEventListener('click', newWindow);
-  MERGE_BUTTON_IDS.forEach(id => {
-    document.getElementById(id)?.addEventListener('click', e => mergeWindowsFromButton(e.currentTarget));
-  });
   PanelHooks['closer'] = render;
 
   // Suppress external re-render when a tab is closed from within the popup UI.
