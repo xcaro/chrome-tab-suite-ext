@@ -38,6 +38,7 @@ async function render(cached) {
   btnClose.disabled = false;
   list.innerHTML = '';
   groups.forEach(tabs => list.appendChild(buildExpandableGroup({
+    classPrefix: 'dedup',
     tabs,
     windowNames,
     removeGroupWhenSingle: true,

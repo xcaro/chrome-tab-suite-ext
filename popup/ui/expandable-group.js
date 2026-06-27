@@ -14,17 +14,18 @@ export function buildExpandableGroup({
   removeGroupWhenSingle = false,
   windowNames,
   onFocus,
+  classPrefix = 'tabset',
 } = {}) {
-  const group    = document.createElement('div'); group.className = 'dup-group';
-  const header   = document.createElement('div'); header.className = 'dup-header';
-  const titleEl  = document.createElement('div'); titleEl.className = 'dup-title';
-  const countEl  = document.createElement('div'); countEl.className = 'dup-count';
-  const chevron  = document.createElement('div'); chevron.className = 'dup-chevron'; chevron.textContent = '▸';
-  const tabList  = document.createElement('div'); tabList.className = 'dup-tab-list';
+  const group    = document.createElement('div'); group.className = `${classPrefix}-group`;
+  const header   = document.createElement('div'); header.className = `${classPrefix}-header`;
+  const titleEl  = document.createElement('div'); titleEl.className = `${classPrefix}-title`;
+  const countEl  = document.createElement('div'); countEl.className = `${classPrefix}-count`;
+  const chevron  = document.createElement('div'); chevron.className = `${classPrefix}-chevron`; chevron.textContent = '▸';
+  const tabList  = document.createElement('div'); tabList.className = `${classPrefix}-tab-list`;
 
   titleEl.title = titleEl.textContent = title ?? tabs[0]?.title ?? '';
   countEl.textContent = countLabel;
-  header.append(buildFavicon(tabs.find(t => t.favIconUrl)?.favIconUrl ?? null), titleEl, countEl);
+  header.append(buildFavicon(tabs.find(t => t.favIconUrl)?.favIconUrl ?? null, { classPrefix }), titleEl, countEl);
 
   for (const action of headerActions) {
     const btn = document.createElement('button');
@@ -82,7 +83,7 @@ export function buildExpandableGroup({
         ...action,
         onClick: ctx => action.onClick?.({ ...ctx, groupEl: group, countEl, removeTabRow: () => removeTabRow(row) }),
       }));
-      row = buildTabRow(tab, { actions, onFocus });
+      row = buildTabRow(tab, { actions, onFocus, classPrefix });
       (windowBlock ?? tabList).appendChild(row);
     });
   }

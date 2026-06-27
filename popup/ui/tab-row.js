@@ -2,7 +2,7 @@
 // popup/ui/tab-row.js
 // =============================================================
 
-function makeFavicon(favIconUrl) {
+function makeFavicon(favIconUrl, { classPrefix = 'tabset' } = {}) {
   const fallback = () => {
     const el = document.createElement('span');
     el.textContent = '🌐';
@@ -14,7 +14,7 @@ function makeFavicon(favIconUrl) {
 
   const makeImg = (src, onError) => {
     const img = document.createElement('img');
-    img.className = 'dup-favicon';
+    img.className = `${classPrefix}-favicon`;
     img.src = src;
     img.addEventListener('error', () => { if (img.parentNode) img.replaceWith(onError()); });
     return img;
@@ -30,9 +30,9 @@ function makeFavicon(favIconUrl) {
   return makeImg(favIconUrl, googleFallback);
 }
 
-export function buildTabRow(tab, { actions = [], onFocus } = {}) {
+export function buildTabRow(tab, { actions = [], onFocus, classPrefix = 'tabset' } = {}) {
   const row = document.createElement('div');
-  row.className = 'dup-tab-row';
+  row.className = `${classPrefix}-tab-row`;
 
   let displayUrl = tab.url;
   let fullUrl    = tab.url;
@@ -53,7 +53,7 @@ export function buildTabRow(tab, { actions = [], onFocus } = {}) {
   focusBtn.className = 'focus-btn'; focusBtn.title = 'Jump to tab'; focusBtn.textContent = '↗';
   focusBtn.addEventListener('click', async e => { e.stopPropagation(); await onFocus?.(tab); });
 
-  row.append(makeFavicon(tab.favIconUrl), meta, focusBtn);
+  row.append(makeFavicon(tab.favIconUrl, { classPrefix }), meta, focusBtn);
 
   for (const action of actions) {
     const { label, className, title = '' } = action;
@@ -71,6 +71,6 @@ export function buildTabRow(tab, { actions = [], onFocus } = {}) {
   return row;
 }
 
-export function buildFavicon(favIconUrl) {
-  return makeFavicon(favIconUrl);
+export function buildFavicon(favIconUrl, options) {
+  return makeFavicon(favIconUrl, options);
 }

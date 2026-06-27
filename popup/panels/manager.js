@@ -193,6 +193,7 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow, windowN
     const tabs = tree.get(root);
     const winCount = new Set(tabs.map(t => t.windowId)).size;
     const group = buildExpandableGroup({
+      classPrefix: 'manager',
       title: root,
       tabs,
       countLabel: tabs.length > 1 ? `${tabs.length}` : '',
@@ -203,9 +204,9 @@ async function renderGrouped(allTabs, list, badge, btnAll, btnNewWindow, windowN
     });
 
     if (tabs.length > 1) {
-      const countEl = group.querySelector('.dup-count');
+      const countEl = group.querySelector('.manager-count');
       const winBadge = document.createElement('span');
-      winBadge.className = 'dup-count win-count-badge';
+      winBadge.className = 'manager-count win-count-badge';
       winBadge.textContent = `${winCount}w`;
       winBadge.title = `${winCount} window${winCount > 1 ? 's' : ''}`;
       countEl?.after(winBadge);
@@ -234,7 +235,11 @@ async function renderFiltered(allTabs, list, badge, btnAll, btnNewWindow) {
   btnAll.disabled = btnNewWindow.disabled = _hostOnly;
   btnAll.style.display = btnNewWindow.style.display = _hostOnly ? 'none' : '';
   list.innerHTML = '';
-  visibleTabs.forEach(tab => list.appendChild(buildTabRow(tab, { actions: [closeRowAction(tab)], onFocus: focusTab })));
+  visibleTabs.forEach(tab => list.appendChild(buildTabRow(tab, {
+    actions: [closeRowAction(tab)],
+    onFocus: focusTab,
+    classPrefix: 'manager',
+  })));
 }
 
 async function render(tabsPromise) {
