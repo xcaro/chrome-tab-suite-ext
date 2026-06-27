@@ -94,11 +94,21 @@ const _PUBLIC_SUFFIXES = new Set([
 const _ROOT_DOMAIN_CACHE_MAX = 500;
 const _rootDomainCache = new Map();
 
+function _isIPv4Address(hostname) {
+  const parts = hostname.split('.');
+  return parts.length === 4 && parts.every(part => {
+    if (!/^\d+$/.test(part)) return false;
+    const value = Number(part);
+    return value >= 0 && value <= 255;
+  });
+}
+
 function _getRootDomain(h) {
   if (_rootDomainCache.has(h)) return _rootDomainCache.get(h);
   let root;
+  if (_isIPv4Address(h)) root = h;
   const parts = h.split('.');
-  if (parts.length >= 3) {
+  if (!root && parts.length >= 3) {
     const last2 = parts.slice(-2).join('.');
     if (_PUBLIC_SUFFIXES.has(last2)) {
       root = parts[parts.length - 3] + '.' + last2;

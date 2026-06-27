@@ -17,6 +17,15 @@ test('groupTabsByDomain groups by PSL-aware root domains', () => {
   assert.deepEqual(tree.get('example.com').map(tab => tab.id), [1, 2]);
 });
 
+test('groupTabsByDomain uses the full IPv4 host as the group title', () => {
+  const tree = groupTabsByDomain([
+    { id: 10, url: 'http://192.168.1.10/admin', windowId: 1, lastAccessed: 10 },
+    { id: 11, url: 'http://192.168.1.10/status', windowId: 1, lastAccessed: 20 },
+  ]);
+
+  assert.deepEqual([...tree.keys()], ['192.168.1.10']);
+});
+
 test('sortGroups orders tabs by most recent window bucket', () => {
   const tree = sortGroups(groupTabsByDomain(tabs));
 

@@ -40,3 +40,10 @@ test('parseDomainLevels handles configured public suffixes', () => {
     sub: null,
   });
 });
+
+test('parseDomainLevels keeps IPv4 hosts intact', () => {
+  assert.deepEqual(parseDomainLevels('192.168.1.10'), {
+    root: '192.168.1.10',
+    sub: null,
+  });
+});
